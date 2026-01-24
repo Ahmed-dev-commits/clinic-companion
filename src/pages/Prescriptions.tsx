@@ -637,85 +637,161 @@ export function PrescriptionsPage() {
                 </CardContent>
               </Card>
             ) : (
-              [...filteredPrescriptions].reverse().map((rx) => (
+              [...filteredPrescriptions].reverse().map((rx) => {
+                const patient = patients.find(p => p.id === rx.patientId);
+                const followUpDate = new Date(rx.createdAt);
+                followUpDate.setDate(followUpDate.getDate() + 7);
+                
+                return (
                 <Card key={rx.id} id={`prescription-${rx.id}`}>
-                  {/* Print Header - Only visible when printing */}
-                  <div className="hidden print:block print-header">
-                    <h1 className="text-2xl font-bold">MediCare Hospital</h1>
-                    <p className="text-sm">E-Prescription</p>
+                  {/* ===== PRINT LAYOUT - Professional E-Prescription Template ===== */}
+                  <div className="hidden print:block p-8">
+                    {/* Header with Logo and Clinic Info */}
+                    <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-4">
+                      <div className="flex items-start gap-4">
+                        {/* Logo Placeholder */}
+                        <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                          LOGO
+                        </div>
+                        <div>
+                          <h1 className="text-2xl font-bold text-primary">MediCare Hospital</h1>
+                          <p className="text-sm text-muted-foreground">123 Healthcare Avenue, Medical District</p>
+                          <p className="text-sm text-muted-foreground">City, State - 400001</p>
+                          <p className="text-sm text-muted-foreground">Phone: +91 98765 43210 | Email: care@medicare.com</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">Dr. Rajesh Kumar</p>
+                        <p className="text-sm text-muted-foreground">MBBS, MD (General Medicine)</p>
+                        <p className="text-sm text-muted-foreground">Reg. No: MCI-12345-2020</p>
+                        <p className="text-sm text-muted-foreground">Consultation: 10 AM - 6 PM</p>
+                      </div>
+                    </div>
+                    
+                    {/* Patient Details Section */}
+                    <div className="bg-muted/50 p-4 rounded-lg mb-4 border">
+                      <h2 className="font-bold text-sm mb-2 text-primary">PATIENT INFORMATION</h2>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                        <p><span className="font-medium">Patient Name:</span> {rx.patientName}</p>
+                        <p><span className="font-medium">Patient ID:</span> {rx.patientId}</p>
+                        <p><span className="font-medium">Age / Gender:</span> {rx.patientAge} years / {patient?.gender || 'N/A'}</p>
+                        <p><span className="font-medium">Date:</span> {format(new Date(rx.createdAt), 'MMMM dd, yyyy')}</p>
+                        <p><span className="font-medium">Contact:</span> {patient?.contact || 'N/A'}</p>
+                        <p><span className="font-medium">Visit ID:</span> RX-{rx.id}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Diagnosis Section */}
+                    <div className="mb-4 p-3 border rounded">
+                      <h2 className="font-bold text-sm mb-1 text-primary">DIAGNOSIS</h2>
+                      <p className="text-sm">{rx.diagnosis}</p>
+                    </div>
+                    
+                    {/* Medications Table */}
+                    <div className="mb-4">
+                      <h2 className="font-bold text-sm mb-2 text-primary">PRESCRIBED MEDICATIONS</h2>
+                      <table className="w-full border-collapse border text-sm">
+                        <thead>
+                          <tr className="bg-primary/10">
+                            <th className="border p-2 text-left font-semibold">#</th>
+                            <th className="border p-2 text-left font-semibold">Medicine Name</th>
+                            <th className="border p-2 text-left font-semibold">Dosage</th>
+                            <th className="border p-2 text-left font-semibold">Frequency</th>
+                            <th className="border p-2 text-left font-semibold">Duration</th>
+                            <th className="border p-2 text-left font-semibold">Instructions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rx.medicines.map((med, i) => (
+                            <tr key={i}>
+                              <td className="border p-2">{i + 1}</td>
+                              <td className="border p-2 font-medium">{med.name}</td>
+                              <td className="border p-2">{med.dosage}</td>
+                              <td className="border p-2">{med.frequency}</td>
+                              <td className="border p-2">{med.duration}</td>
+                              <td className="border p-2">As directed</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Lab Tests */}
+                    {rx.labTests.length > 0 && (
+                      <div className="mb-4 p-3 border rounded">
+                        <h2 className="font-bold text-sm mb-1 text-primary">LAB TESTS ADVISED</h2>
+                        <p className="text-sm">{rx.labTests.join(', ')}</p>
+                      </div>
+                    )}
+                    
+                    {/* Notes & Advice */}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      {rx.doctorNotes && (
+                        <div className="p-3 border rounded">
+                          <h2 className="font-bold text-sm mb-1 text-primary">NOTES / ADVICE</h2>
+                          <p className="text-sm">{rx.doctorNotes}</p>
+                        </div>
+                      )}
+                      {rx.precautions && (
+                        <div className="p-3 border rounded">
+                          <h2 className="font-bold text-sm mb-1 text-primary">PRECAUTIONS / ALLERGIES</h2>
+                          <p className="text-sm">{rx.precautions}</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Follow-up */}
+                    <div className="mb-6 p-3 bg-muted/30 border rounded">
+                      <p className="text-sm"><span className="font-medium">Follow-up Date:</span> {format(followUpDate, 'MMMM dd, yyyy')}</p>
+                    </div>
+                    
+                    {/* Footer - Signature & Stamp */}
+                    <div className="flex justify-between items-end mt-8 pt-4 border-t">
+                      <div className="text-center">
+                        <div className="w-32 h-20 border-2 border-dashed border-muted-foreground rounded flex items-center justify-center text-xs text-muted-foreground mb-1">
+                          Clinic Stamp
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="w-40 border-b border-black mb-1 h-12"></div>
+                        <p className="text-sm font-medium">Doctor's Signature</p>
+                        <p className="text-xs text-muted-foreground">Dr. Rajesh Kumar</p>
+                      </div>
+                    </div>
+                    
+                    {/* Disclaimer */}
+                    <div className="mt-6 pt-4 border-t text-center">
+                      <p className="text-xs text-muted-foreground italic">
+                        This prescription is valid for 7 days. Please consult your doctor before taking any medicine.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This is a computer-generated e-prescription from MediCare Hospital.
+                      </p>
+                    </div>
                   </div>
                   
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between print:block">
+                  {/* ===== SCREEN LAYOUT ===== */}
+                  <CardHeader className="pb-2 print:hidden">
+                    <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-base print:text-xl print:mb-2">{rx.patientName}</CardTitle>
-                        <p className="text-sm text-muted-foreground print:text-black">
+                        <CardTitle className="text-base">{rx.patientName}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
                           {rx.diagnosis} • {format(new Date(rx.createdAt), 'MMM dd, yyyy')}
                         </p>
                       </div>
-                      <Badge variant="outline" className="font-mono text-xs print:mt-2 print:inline-block">
+                      <Badge variant="outline" className="font-mono text-xs">
                         {rx.id}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* Detailed info for print */}
-                    <div className="hidden print:block print-section">
-                      <p><strong>Patient ID:</strong> {rx.patientId}</p>
-                      <p><strong>Age:</strong> {rx.patientAge} years</p>
-                      <p><strong>Date:</strong> {format(new Date(rx.createdAt), 'MMMM dd, yyyy')}</p>
-                    </div>
-                    
-                    <div className="hidden print:block print-section">
-                      <p className="font-bold mb-2">Diagnosis:</p>
-                      <p>{rx.diagnosis}</p>
-                    </div>
-                    
-                    <div className="hidden print:block print-section">
-                      <p className="font-bold mb-2">Medications:</p>
-                      <ol className="list-decimal list-inside">
-                        {rx.medicines.map((med, i) => (
-                          <li key={i} className="mb-1">
-                            <strong>{med.name}</strong> - {med.dosage} | {med.frequency} | {med.duration}
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                    
-                    {rx.labTests.length > 0 && (
-                      <div className="hidden print:block print-section">
-                        <p className="font-bold mb-2">Lab Tests:</p>
-                        <p>{rx.labTests.join(', ')}</p>
-                      </div>
-                    )}
-                    
-                    {rx.doctorNotes && (
-                      <div className="hidden print:block print-section">
-                        <p className="font-bold mb-2">Doctor Notes:</p>
-                        <p>{rx.doctorNotes}</p>
-                      </div>
-                    )}
-                    
-                    {rx.precautions && (
-                      <div className="hidden print:block print-section">
-                        <p className="font-bold mb-2">Precautions:</p>
-                        <p>{rx.precautions}</p>
-                      </div>
-                    )}
-                    
+                  <CardContent className="space-y-3 print:hidden">
                     {/* Screen view - generated text */}
-                    <div className="prescription-text text-xs print:hidden">
+                    <div className="prescription-text text-xs">
                       {rx.generatedText}
                     </div>
                     
-                    {/* Print Footer */}
-                    <div className="hidden print:block print-footer">
-                      <p>Thank you for choosing MediCare Hospital</p>
-                      <p className="text-xs mt-1">This is a computer-generated prescription</p>
-                    </div>
-                    
-                    {/* Action buttons - hidden in print */}
-                    <div className="flex gap-2 no-print">
+                    {/* Action buttons */}
+                    <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -743,7 +819,8 @@ export function PrescriptionsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+                );
+              }))
             )}
           </div>
         </div>
