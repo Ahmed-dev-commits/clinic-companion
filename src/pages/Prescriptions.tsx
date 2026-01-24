@@ -135,6 +135,16 @@ export function PrescriptionsPage() {
     toast.success('Prescription copied to clipboard');
   };
 
+  const handlePrint = (rxId: string) => {
+    // Add print-content class to the specific prescription
+    const element = document.getElementById(`prescription-${rxId}`);
+    if (element) {
+      element.classList.add('print-content');
+      window.print();
+      element.classList.remove('print-content');
+    }
+  };
+
   const handleDownloadPDF = (rx: Prescription) => {
     const doc = new jsPDF();
     
@@ -378,25 +388,84 @@ export function PrescriptionsPage() {
               </Card>
             ) : (
               [...filteredPrescriptions].reverse().map((rx) => (
-                <Card key={rx.id}>
+                <Card key={rx.id} id={`prescription-${rx.id}`}>
+                  {/* Print Header - Only visible when printing */}
+                  <div className="hidden print:block print-header">
+                    <h1 className="text-2xl font-bold">MediCare Hospital</h1>
+                    <p className="text-sm">E-Prescription</p>
+                  </div>
+                  
                   <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between print:block">
                       <div>
-                        <CardTitle className="text-base">{rx.patientName}</CardTitle>
-                        <p className="text-sm text-muted-foreground">
+                        <CardTitle className="text-base print:text-xl print:mb-2">{rx.patientName}</CardTitle>
+                        <p className="text-sm text-muted-foreground print:text-black">
                           {rx.diagnosis} • {format(new Date(rx.createdAt), 'MMM dd, yyyy')}
                         </p>
                       </div>
-                      <Badge variant="outline" className="font-mono text-xs">
+                      <Badge variant="outline" className="font-mono text-xs print:mt-2 print:inline-block">
                         {rx.id}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="prescription-text text-xs">
+                    {/* Detailed info for print */}
+                    <div className="hidden print:block print-section">
+                      <p><strong>Patient ID:</strong> {rx.patientId}</p>
+                      <p><strong>Age:</strong> {rx.patientAge} years</p>
+                      <p><strong>Date:</strong> {format(new Date(rx.createdAt), 'MMMM dd, yyyy')}</p>
+                    </div>
+                    
+                    <div className="hidden print:block print-section">
+                      <p className="font-bold mb-2">Diagnosis:</p>
+                      <p>{rx.diagnosis}</p>
+                    </div>
+                    
+                    <div className="hidden print:block print-section">
+                      <p className="font-bold mb-2">Medications:</p>
+                      <ol className="list-decimal list-inside">
+                        {rx.medicines.map((med, i) => (
+                          <li key={i} className="mb-1">
+                            <strong>{med.name}</strong> - {med.dosage} | {med.frequency} | {med.duration}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                    
+                    {rx.labTests.length > 0 && (
+                      <div className="hidden print:block print-section">
+                        <p className="font-bold mb-2">Lab Tests:</p>
+                        <p>{rx.labTests.join(', ')}</p>
+                      </div>
+                    )}
+                    
+                    {rx.doctorNotes && (
+                      <div className="hidden print:block print-section">
+                        <p className="font-bold mb-2">Doctor Notes:</p>
+                        <p>{rx.doctorNotes}</p>
+                      </div>
+                    )}
+                    
+                    {rx.precautions && (
+                      <div className="hidden print:block print-section">
+                        <p className="font-bold mb-2">Precautions:</p>
+                        <p>{rx.precautions}</p>
+                      </div>
+                    )}
+                    
+                    {/* Screen view - generated text */}
+                    <div className="prescription-text text-xs print:hidden">
                       {rx.generatedText}
                     </div>
-                    <div className="flex gap-2">
+                    
+                    {/* Print Footer */}
+                    <div className="hidden print:block print-footer">
+                      <p>Thank you for choosing MediCare Hospital</p>
+                      <p className="text-xs mt-1">This is a computer-generated prescription</p>
+                    </div>
+                    
+                    {/* Action buttons - hidden in print */}
+                    <div className="flex gap-2 no-print">
                       <Button
                         variant="outline"
                         size="sm"
@@ -408,7 +477,7 @@ export function PrescriptionsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.print()}
+                        onClick={() => handlePrint(rx.id)}
                       >
                         <Printer className="mr-1 h-3 w-3" />
                         Print
