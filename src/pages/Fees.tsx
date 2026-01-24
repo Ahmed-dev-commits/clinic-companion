@@ -137,7 +137,12 @@ export function FeesPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    const element = document.getElementById('receipt-print');
+    if (element) {
+      element.classList.add('print-content');
+      window.print();
+      element.classList.remove('print-content');
+    }
   };
 
   return (
@@ -289,8 +294,8 @@ export function FeesPage() {
         {/* Receipt Preview / Payment History */}
         <div className="space-y-6">
           {showReceipt && lastPayment && (
-            <Card>
-              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+            <Card id="receipt-print">
+              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 no-print">
                 <CardTitle className="text-lg">Receipt Preview</CardTitle>
                 <Button variant="outline" size="sm" onClick={handlePrint}>
                   <Printer className="mr-2 h-4 w-4" />
@@ -299,25 +304,45 @@ export function FeesPage() {
               </CardHeader>
               <CardContent>
                 <div className="receipt-container">
-                  <div className="text-center mb-4">
-                    <h3 className="font-bold text-lg">MediCare Hospital</h3>
-                    <p className="text-xs">Payment Receipt</p>
+                  {/* Print Header */}
+                  <div className="text-center mb-4 print-header">
+                    <h3 className="font-bold text-lg print:text-2xl">MediCare Hospital</h3>
+                    <p className="text-xs print:text-sm">Payment Receipt</p>
                   </div>
-                  <div className="border-t border-dashed pt-2 mb-2">
-                    <p>Patient: {lastPayment.patient.name}</p>
-                    <p>ID: {lastPayment.patientId}</p>
-                    <p>Date: {format(new Date(lastPayment.createdAt), 'MMM dd, yyyy HH:mm')}</p>
+                  
+                  <div className="border-t border-dashed pt-2 mb-2 print-section">
+                    <p><strong>Patient:</strong> {lastPayment.patient.name}</p>
+                    <p><strong>ID:</strong> {lastPayment.patientId}</p>
+                    <p><strong>Date:</strong> {format(new Date(lastPayment.createdAt), 'MMM dd, yyyy HH:mm')}</p>
                   </div>
-                  <div className="border-t border-dashed pt-2 mb-2">
-                    <p>Consultation: Rs. {lastPayment.consultationFee}</p>
-                    <p>Lab Fee: Rs. {lastPayment.labFee}</p>
-                    <p>Medicines: Rs. {lastPayment.medicineFee}</p>
+                  
+                  <div className="border-t border-dashed pt-2 mb-2 print-section">
+                    <p><strong>Consultation:</strong> Rs. {lastPayment.consultationFee}</p>
+                    <p><strong>Lab Fee:</strong> Rs. {lastPayment.labFee}</p>
+                    <p><strong>Medicines:</strong> Rs. {lastPayment.medicineFee}</p>
+                    
+                    {/* Medicine details for print */}
+                    {lastPayment.medicines && lastPayment.medicines.length > 0 && (
+                      <div className="mt-2 pl-4">
+                        <p className="text-sm font-medium">Medicine Details:</p>
+                        <ul className="text-sm list-disc list-inside">
+                          {lastPayment.medicines.map((m: any, i: number) => (
+                            <li key={i}>{m.name} × {m.quantity} = Rs. {m.price * m.quantity}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                  <div className="border-t border-dashed pt-2 font-bold">
-                    <p>Total: Rs. {lastPayment.totalAmount}</p>
+                  
+                  <div className="border-t border-dashed pt-2 font-bold print-section">
+                    <p className="text-lg">Total: Rs. {lastPayment.totalAmount}</p>
                     <p>Paid via: {lastPayment.paymentMode}</p>
                   </div>
-                  <p className="text-center text-xs mt-4">Thank you for choosing MediCare!</p>
+                  
+                  <div className="print-footer">
+                    <p className="text-center text-xs mt-4">Thank you for choosing MediCare!</p>
+                    <p className="text-center text-xs hidden print:block mt-1">This is a computer-generated receipt</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
