@@ -147,54 +147,304 @@ export function PrescriptionsPage() {
 
   const handleDownloadPDF = (rx: Prescription) => {
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentWidth = pageWidth - 2 * margin;
     
-    doc.setFontSize(20);
-    doc.text('MediCare Hospital', 105, 20, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text('E-Prescription', 105, 28, { align: 'center' });
+    // Colors
+    const primaryColor: [number, number, number] = [26, 86, 219]; // Blue
+    const textColor: [number, number, number] = [30, 30, 30];
+    const mutedColor: [number, number, number] = [100, 100, 100];
+    const lineColor: [number, number, number] = [200, 200, 200];
     
+    // Get patient details
+    const patient = patients.find(p => p.id === rx.patientId);
+    
+    // ============ HEADER SECTION ============
+    // Logo placeholder (blue square)
+    doc.setFillColor(...primaryColor);
+    doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
+    doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
-    doc.text(`Date: ${format(new Date(rx.createdAt), 'MMM dd, yyyy')}`, 20, 40);
-    doc.text(`Prescription ID: ${rx.id}`, 20, 46);
+    doc.setFont('helvetica', 'bold');
+    doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
     
-    doc.setFontSize(12);
-    doc.text(`Patient: ${rx.patientName}`, 20, 56);
-    doc.text(`Age: ${rx.patientAge} years`, 20, 62);
-    doc.text(`Diagnosis: ${rx.diagnosis}`, 20, 68);
+    // Clinic Info
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MediCare Hospital', margin + 30, 18);
     
-    doc.setFontSize(11);
-    doc.text('Medications:', 20, 80);
-    let yPos = 86;
+    doc.setTextColor(...mutedColor);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('123 Healthcare Avenue, Medical District', margin + 30, 24);
+    doc.text('City, State - 400001', margin + 30, 29);
+    doc.text('Phone: +91 98765 43210 | Email: care@medicare.com', margin + 30, 34);
+    
+    // Doctor Info (right side)
+    doc.setTextColor(...textColor);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dr. Rajesh Kumar', pageWidth - margin, 18, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...mutedColor);
+    doc.text('MBBS, MD (General Medicine)', pageWidth - margin, 23, { align: 'right' });
+    doc.text('Reg. No: MCI-12345-2020', pageWidth - margin, 28, { align: 'right' });
+    doc.text('Consultation Hours: 10 AM - 6 PM', pageWidth - margin, 33, { align: 'right' });
+    
+    // Header line
+    doc.setDrawColor(...primaryColor);
+    doc.setLineWidth(0.8);
+    doc.line(margin, 40, pageWidth - margin, 40);
+    
+    // E-Prescription title
+    doc.setFillColor(...primaryColor);
+    doc.roundedRect(pageWidth / 2 - 25, 43, 50, 8, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('E-PRESCRIPTION', pageWidth / 2, 48.5, { align: 'center' });
+    
+    // ============ PATIENT DETAILS SECTION ============
+    let yPos = 58;
+    
+    // Patient info box
+    doc.setDrawColor(...lineColor);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, yPos, contentWidth, 28, 2, 2, 'S');
+    
+    doc.setTextColor(...mutedColor);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    
+    // Left column
+    doc.text('Patient Name:', margin + 4, yPos + 7);
+    doc.text('Age / Gender:', margin + 4, yPos + 14);
+    doc.text('Patient ID:', margin + 4, yPos + 21);
+    
+    // Left column values
+    doc.setTextColor(...textColor);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(rx.patientName, margin + 30, yPos + 7);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${rx.patientAge} years / ${patient?.gender || 'N/A'}`, margin + 30, yPos + 14);
+    doc.text(rx.patientId, margin + 30, yPos + 21);
+    
+    // Right column
+    const rightCol = pageWidth / 2 + 10;
+    doc.setTextColor(...mutedColor);
+    doc.setFontSize(8);
+    doc.text('Date:', rightCol, yPos + 7);
+    doc.text('Prescription ID:', rightCol, yPos + 14);
+    doc.text('Visit ID:', rightCol, yPos + 21);
+    
+    // Right column values
+    doc.setTextColor(...textColor);
+    doc.setFontSize(9);
+    doc.text(format(new Date(rx.createdAt), 'dd MMM yyyy, hh:mm a'), rightCol + 30, yPos + 7);
+    doc.text(rx.id, rightCol + 30, yPos + 14);
+    doc.text(`V-${rx.id.slice(-6).toUpperCase()}`, rightCol + 30, yPos + 21);
+    
+    yPos += 35;
+    
+    // ============ DIAGNOSIS SECTION ============
+    doc.setFillColor(245, 247, 250);
+    doc.roundedRect(margin, yPos, contentWidth, 14, 2, 2, 'F');
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DIAGNOSIS:', margin + 4, yPos + 6);
+    doc.setTextColor(...textColor);
+    doc.setFont('helvetica', 'normal');
+    doc.text(rx.diagnosis, margin + 28, yPos + 6);
+    
+    // Allergies (if any from patient record)
+    doc.setTextColor(180, 50, 50);
+    doc.setFontSize(8);
+    doc.text('Allergies: None reported', margin + 4, yPos + 11);
+    
+    yPos += 20;
+    
+    // ============ PRESCRIPTION TABLE ============
+    // Table header
+    doc.setFillColor(...primaryColor);
+    doc.rect(margin, yPos, contentWidth, 8, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    
+    const colWidths = [8, 45, 25, 30, 22, 50];
+    let xPos = margin + 2;
+    
+    doc.text('#', xPos, yPos + 5.5);
+    xPos += colWidths[0];
+    doc.text('Medicine Name', xPos, yPos + 5.5);
+    xPos += colWidths[1];
+    doc.text('Dosage', xPos, yPos + 5.5);
+    xPos += colWidths[2];
+    doc.text('Frequency', xPos, yPos + 5.5);
+    xPos += colWidths[3];
+    doc.text('Duration', xPos, yPos + 5.5);
+    xPos += colWidths[4];
+    doc.text('Instructions', xPos, yPos + 5.5);
+    
+    yPos += 8;
+    
+    // Table rows
+    doc.setTextColor(...textColor);
+    doc.setFont('helvetica', 'normal');
+    
     rx.medicines.forEach((med, i) => {
-      doc.text(`${i + 1}. ${med.name} - ${med.dosage} | ${med.frequency} | ${med.duration}`, 25, yPos);
-      yPos += 6;
+      // Alternating row colors
+      if (i % 2 === 0) {
+        doc.setFillColor(250, 250, 252);
+        doc.rect(margin, yPos, contentWidth, 8, 'F');
+      }
+      
+      xPos = margin + 2;
+      doc.text(`${i + 1}`, xPos, yPos + 5.5);
+      xPos += colWidths[0];
+      doc.setFont('helvetica', 'bold');
+      doc.text(med.name, xPos, yPos + 5.5);
+      doc.setFont('helvetica', 'normal');
+      xPos += colWidths[1];
+      doc.text(med.dosage, xPos, yPos + 5.5);
+      xPos += colWidths[2];
+      doc.text(med.frequency, xPos, yPos + 5.5);
+      xPos += colWidths[3];
+      doc.text(med.duration, xPos, yPos + 5.5);
+      xPos += colWidths[4];
+      doc.text('After food', xPos, yPos + 5.5);
+      
+      yPos += 8;
     });
     
+    // Table border
+    doc.setDrawColor(...lineColor);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, yPos - (rx.medicines.length * 8) - 8, contentWidth, (rx.medicines.length + 1) * 8, 'S');
+    
+    yPos += 8;
+    
+    // ============ LAB TESTS SECTION ============
     if (rx.labTests.length > 0) {
-      yPos += 4;
-      doc.text('Lab Tests:', 20, yPos);
-      yPos += 6;
-      doc.text(rx.labTests.join(', '), 25, yPos);
+      doc.setFillColor(255, 250, 245);
+      doc.roundedRect(margin, yPos, contentWidth, 12, 2, 2, 'F');
+      doc.setTextColor(200, 120, 50);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('LAB TESTS ADVISED:', margin + 4, yPos + 5);
+      doc.setTextColor(...textColor);
+      doc.setFont('helvetica', 'normal');
+      doc.text(rx.labTests.join(', '), margin + 38, yPos + 5);
+      doc.setTextColor(...mutedColor);
+      doc.setFontSize(7);
+      doc.text('(Please complete tests before next visit)', margin + 4, yPos + 10);
+      yPos += 16;
     }
     
-    if (rx.doctorNotes) {
-      yPos += 10;
-      doc.text('Doctor Notes:', 20, yPos);
-      yPos += 6;
-      const splitNotes = doc.splitTextToSize(rx.doctorNotes, 170);
-      doc.text(splitNotes, 25, yPos);
+    // ============ NOTES & ADVICE SECTION ============
+    if (rx.doctorNotes || rx.precautions) {
+      doc.setDrawColor(...lineColor);
+      doc.setLineWidth(0.3);
+      
+      const notesHeight = 24;
+      doc.roundedRect(margin, yPos, contentWidth, notesHeight, 2, 2, 'S');
+      
+      doc.setTextColor(...primaryColor);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('NOTES & ADVICE:', margin + 4, yPos + 6);
+      
+      doc.setTextColor(...textColor);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      
+      if (rx.doctorNotes) {
+        const splitNotes = doc.splitTextToSize(rx.doctorNotes, contentWidth - 8);
+        doc.text(splitNotes, margin + 4, yPos + 12);
+      }
+      
+      if (rx.precautions) {
+        doc.setTextColor(180, 50, 50);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Precautions:', margin + 4, yPos + 18);
+        doc.setFont('helvetica', 'normal');
+        doc.text(rx.precautions, margin + 25, yPos + 18);
+      }
+      
+      yPos += notesHeight + 6;
     }
     
-    if (rx.precautions) {
-      yPos += 10;
-      doc.text('Precautions:', 20, yPos);
-      yPos += 6;
-      const splitPrecautions = doc.splitTextToSize(rx.precautions, 170);
-      doc.text(splitPrecautions, 25, yPos);
-    }
+    // ============ FOLLOW-UP SECTION ============
+    doc.setFillColor(240, 255, 240);
+    doc.roundedRect(margin, yPos, contentWidth / 2 - 5, 12, 2, 2, 'F');
+    doc.setTextColor(50, 150, 50);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FOLLOW-UP DATE:', margin + 4, yPos + 7);
+    doc.setTextColor(...textColor);
+    doc.setFont('helvetica', 'normal');
+    doc.text(format(new Date(new Date(rx.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000), 'dd MMM yyyy'), margin + 38, yPos + 7);
+    
+    // ============ FOOTER SECTION ============
+    const footerY = pageHeight - 50;
+    
+    // Signature and stamp boxes
+    doc.setDrawColor(...lineColor);
+    doc.setLineWidth(0.3);
+    
+    // Doctor signature
+    doc.rect(margin, footerY, 60, 25, 'S');
+    doc.setTextColor(...mutedColor);
+    doc.setFontSize(7);
+    doc.text('Doctor\'s Signature', margin + 30, footerY + 3, { align: 'center' });
+    doc.setLineWidth(0.5);
+    doc.line(margin + 5, footerY + 18, margin + 55, footerY + 18);
+    doc.setFontSize(8);
+    doc.setTextColor(...textColor);
+    doc.text('Dr. Rajesh Kumar', margin + 30, footerY + 22, { align: 'center' });
+    
+    // Clinic stamp
+    doc.setLineWidth(0.3);
+    doc.rect(pageWidth - margin - 60, footerY, 60, 25, 'S');
+    doc.setTextColor(...mutedColor);
+    doc.setFontSize(7);
+    doc.text('Clinic Stamp', pageWidth - margin - 30, footerY + 3, { align: 'center' });
+    doc.setDrawColor(...primaryColor);
+    doc.setLineWidth(1);
+    doc.roundedRect(pageWidth - margin - 50, footerY + 6, 40, 16, 2, 2, 'S');
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MediCare', pageWidth - margin - 30, footerY + 14, { align: 'center' });
+    doc.setFontSize(6);
+    doc.text('HOSPITAL', pageWidth - margin - 30, footerY + 19, { align: 'center' });
+    
+    // Disclaimer
+    doc.setDrawColor(...lineColor);
+    doc.setLineWidth(0.3);
+    doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
+    
+    doc.setTextColor(...mutedColor);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    const disclaimer = 'Disclaimer: This prescription is valid for 7 days from the date of issue. Please consult your doctor before taking any medicine. Self-medication can be harmful.';
+    const splitDisclaimer = doc.splitTextToSize(disclaimer, contentWidth);
+    doc.text(splitDisclaimer, pageWidth / 2, pageHeight - 14, { align: 'center' });
+    
+    // Page border
+    doc.setDrawColor(...primaryColor);
+    doc.setLineWidth(0.5);
+    doc.rect(5, 5, pageWidth - 10, pageHeight - 10, 'S');
     
     doc.save(`prescription-${rx.id}.pdf`);
-    toast.success('PDF downloaded');
+    toast.success('Professional PDF downloaded');
   };
 
   // Filter prescriptions
