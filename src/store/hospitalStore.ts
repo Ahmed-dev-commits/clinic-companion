@@ -62,6 +62,10 @@ const samplePayments: Payment[] = [
     totalAmount: 1850,
     paymentMode: 'Card',
     createdAt: new Date().toISOString(),
+    medicines: [
+      { stockId: 'STK-001', name: 'Paracetamol 500mg', quantity: 10, price: 10 },
+      { stockId: 'STK-002', name: 'Amoxicillin 250mg', quantity: 10, price: 25 },
+    ],
   },
   {
     id: 'PAY-002',
@@ -73,6 +77,9 @@ const samplePayments: Payment[] = [
     totalAmount: 700,
     paymentMode: 'Cash',
     createdAt: new Date().toISOString(),
+    medicines: [
+      { stockId: 'STK-001', name: 'Paracetamol 500mg', quantity: 20, price: 10 },
+    ],
   },
 ];
 

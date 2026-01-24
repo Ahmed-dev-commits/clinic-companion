@@ -12,6 +12,13 @@ export interface Patient {
   createdAt: string;
 }
 
+export interface PaymentMedicine {
+  stockId: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
 export interface Payment {
   id: string;
   patientId: string;
@@ -22,7 +29,7 @@ export interface Payment {
   totalAmount: number;
   paymentMode: 'Cash' | 'Card';
   createdAt: string;
-  medicines?: { name: string; quantity: number; price: number }[];
+  medicines: PaymentMedicine[];
 }
 
 export interface StockItem {
