@@ -4,25 +4,28 @@
 
 /* Print Styles - Only print content with .print-content class */
 @media print {
-  /* Hide everything except print content */
-  body > *:not(.print-content),
-  body *:not(.print-content):not(.print-content *) {
-    display: none !important;
+  /* Hide everything by default when printing */
+  body * {
+    visibility: hidden;
   }
   
-  /* Show print content */
-  .print-content {
-    display: block !important;
-    visibility: visible !important;
-    position: static !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 20px !important;
-    background: white !important;
-  }
-  
+  /* Show print content and all its children */
+  .print-content,
   .print-content * {
-    visibility: visible !important;
+    visibility: visible;
+  }
+  
+  /* Position print content for proper printing */
+  .print-content {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 20px;
+    background: white;
+    z-index: 9999;
   }
   
   /* Hide buttons and screen-only elements in print */
@@ -31,12 +34,14 @@
   .print\\:hidden,
   [class*="print:hidden"] {
     display: none !important;
+    visibility: hidden !important;
   }
   
   /* Show print-only elements */
   .hidden.print\\:block,
   [class*="print:block"] {
     display: block !important;
+    visibility: visible !important;
   }
   
   /* Professional print styling */
@@ -82,21 +87,18 @@
     print-color-adjust: exact;
   }
   
-  /* Page settings - prevent blank pages */
+  /* Page settings - single page */
   @page {
     size: A4;
     margin: 10mm;
   }
   
   /* Prevent page breaks */
-  .print-content {
-    page-break-before: avoid;
-    page-break-after: avoid;
-  }
-  
+  .print-content,
   .print-content table,
   .print-content .border {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 }
 
