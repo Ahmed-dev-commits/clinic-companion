@@ -152,6 +152,15 @@ export function PrescriptionsPage() {
 
   const handleDownloadPDF = (rx: Prescription) => {
     const doc = new jsPDF();
+    
+    // Set document properties without URLs
+    doc.setProperties({
+      title: `Prescription-${rx.id}`,
+      subject: 'Medical Prescription',
+      author: settings.clinicName,
+      creator: settings.clinicName
+    });
+    
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;

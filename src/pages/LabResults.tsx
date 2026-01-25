@@ -146,6 +146,15 @@ export function LabResultsPage() {
 
   const handleDownloadPDF = (lab: LabResult) => {
     const doc = new jsPDF();
+    
+    // Set document properties without URLs
+    doc.setProperties({
+      title: `Lab-Report-${lab.id}`,
+      subject: 'Laboratory Report',
+      author: settings.clinicName,
+      creator: settings.clinicName
+    });
+    
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
