@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAccessPatients } from '@/hooks/useAccessPatients';
+import { usePatientServices } from '@/hooks/usePatientServices';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ import { ServicesSummaryDialog } from '@/components/patients/ServicesSummaryDial
 
 export function PatientsPage() {
   const { patients, loading, error, isDemoMode, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
+  const { addService, isDemoMode: isServicesDemoMode } = usePatientServices();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isServicesDialogOpen, setIsServicesDialogOpen] = useState(false);
@@ -147,32 +149,17 @@ export function PatientsPage() {
   const handleSaveServices = async (services: ServicesState, grandTotal: number) => {
     if (!selectedPatient) return;
     
-    const serviceId = `SRV-${Date.now().toString(36).toUpperCase()}`;
-    const serviceData = {
-      id: serviceId,
-      patientId: selectedPatient.id,
-      services,
-      grandTotal,
-      status: 'Completed',
-    };
-
     try {
-      await fetch('http://localhost:3001/api/patient-services', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(serviceData),
-      });
+      setIsSubmitting(true);
+      await addService(selectedPatient.id, services, grandTotal);
+      toast.success('Services saved successfully!');
+      setIsServicesDialogOpen(false);
+      setSelectedPatient(null);
     } catch (err) {
-      // Save to localStorage in demo mode
-      console.log('Backend unavailable, saving services to local storage');
-      const existingServices = JSON.parse(localStorage.getItem('demo-services') || '[]');
-      existingServices.push({ ...serviceData, createdAt: new Date().toISOString() });
-      localStorage.setItem('demo-services', JSON.stringify(existingServices));
+      toast.error('Failed to save services');
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    toast.success('Services saved successfully!');
-    setIsServicesDialogOpen(false);
-    setSelectedPatient(null);
   };
 
   const handleViewSummary = (services: ServicesState, grandTotal: number) => {

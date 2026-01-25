@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -43,13 +43,11 @@ interface AdditionalServicesPanelProps {
   isSubmitting?: boolean;
 }
 
-export function AdditionalServicesPanel({
-  patientId,
-  patientName,
-  onSave,
-  onViewSummary,
-  isSubmitting = false,
-}: AdditionalServicesPanelProps) {
+export const AdditionalServicesPanel = forwardRef<HTMLDivElement, AdditionalServicesPanelProps>(
+  function AdditionalServicesPanel(
+    { patientId, patientName, onSave, onViewSummary, isSubmitting = false },
+    ref
+  ) {
   const [services, setServices] = useState<ServicesState>(createEmptyServices);
 
   // Calculate running total
@@ -563,4 +561,5 @@ export function AdditionalServicesPanel({
       </div>
     </div>
   );
-}
+});
+
