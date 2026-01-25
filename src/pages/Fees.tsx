@@ -32,6 +32,26 @@ interface MedicineEntry {
   price: number;
 }
 
+// Helper function to convert number to words
+const numberToWords = (num: number): string => {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  
+  if (num === 0) return 'Zero';
+  
+  const convert = (n: number): string => {
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+    if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convert(n % 100) : '');
+    if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
+    return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
+  };
+  
+  return convert(Math.floor(num));
+};
+
 export function FeesPage() {
   const { patients, payments, stock, addPayment, reduceStock } = useHospitalStore();
   
@@ -295,33 +315,32 @@ export function FeesPage() {
         <div className="space-y-6">
           {showReceipt && lastPayment && (
             <Card id="receipt-print">
-              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 no-print">
+              {/* ===== SCREEN LAYOUT ===== */}
+              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 print:hidden">
                 <CardTitle className="text-lg">Receipt Preview</CardTitle>
                 <Button variant="outline" size="sm" onClick={handlePrint}>
                   <Printer className="mr-2 h-4 w-4" />
                   Print
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="print:hidden">
                 <div className="receipt-container">
-                  {/* Print Header */}
-                  <div className="text-center mb-4 print-header">
-                    <h3 className="font-bold text-lg print:text-2xl">MediCare Hospital</h3>
-                    <p className="text-xs print:text-sm">Payment Receipt</p>
+                  <div className="text-center mb-4">
+                    <h3 className="font-bold text-lg">MediCare Hospital</h3>
+                    <p className="text-xs">Payment Receipt</p>
                   </div>
                   
-                  <div className="border-t border-dashed pt-2 mb-2 print-section">
+                  <div className="border-t border-dashed pt-2 mb-2">
                     <p><strong>Patient:</strong> {lastPayment.patient.name}</p>
                     <p><strong>ID:</strong> {lastPayment.patientId}</p>
                     <p><strong>Date:</strong> {format(new Date(lastPayment.createdAt), 'MMM dd, yyyy HH:mm')}</p>
                   </div>
                   
-                  <div className="border-t border-dashed pt-2 mb-2 print-section">
+                  <div className="border-t border-dashed pt-2 mb-2">
                     <p><strong>Consultation:</strong> Rs. {lastPayment.consultationFee}</p>
                     <p><strong>Lab Fee:</strong> Rs. {lastPayment.labFee}</p>
                     <p><strong>Medicines:</strong> Rs. {lastPayment.medicineFee}</p>
                     
-                    {/* Medicine details for print */}
                     {lastPayment.medicines && lastPayment.medicines.length > 0 && (
                       <div className="mt-2 pl-4">
                         <p className="text-sm font-medium">Medicine Details:</p>
@@ -334,17 +353,169 @@ export function FeesPage() {
                     )}
                   </div>
                   
-                  <div className="border-t border-dashed pt-2 font-bold print-section">
+                  <div className="border-t border-dashed pt-2 font-bold">
                     <p className="text-lg">Total: Rs. {lastPayment.totalAmount}</p>
                     <p>Paid via: {lastPayment.paymentMode}</p>
                   </div>
                   
-                  <div className="print-footer">
-                    <p className="text-center text-xs mt-4">Thank you for choosing MediCare!</p>
-                    <p className="text-center text-xs hidden print:block mt-1">This is a computer-generated receipt</p>
-                  </div>
+                  <p className="text-center text-xs mt-4">Thank you for choosing MediCare!</p>
                 </div>
               </CardContent>
+
+              {/* ===== PRINT LAYOUT - Professional Receipt Template ===== */}
+              <div className="hidden print:block p-8">
+                {/* Header with Logo and Clinic Info */}
+                <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-4">
+                  <div className="flex items-start gap-4">
+                    {/* Logo Placeholder */}
+                    <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                      LOGO
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold text-primary">MediCare Hospital</h1>
+                      <p className="text-sm text-muted-foreground">123 Healthcare Avenue, Medical District</p>
+                      <p className="text-sm text-muted-foreground">City, State - 400001</p>
+                      <p className="text-sm text-muted-foreground">Phone: +91 98765 43210 | Email: care@medicare.com</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <h2 className="text-xl font-bold text-primary">PAYMENT RECEIPT</h2>
+                    <p className="text-sm text-muted-foreground">Receipt No: RCP-{lastPayment.patientId.slice(-4)}-{Date.now().toString().slice(-6)}</p>
+                    <p className="text-sm text-muted-foreground">Date: {format(new Date(lastPayment.createdAt), 'MMMM dd, yyyy')}</p>
+                    <p className="text-sm text-muted-foreground">Time: {format(new Date(lastPayment.createdAt), 'hh:mm a')}</p>
+                  </div>
+                </div>
+                
+                {/* Patient Details Section */}
+                <div className="bg-muted/50 p-4 rounded-lg mb-4 border">
+                  <h2 className="font-bold text-sm mb-2 text-primary">PATIENT INFORMATION</h2>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                    <p><span className="font-medium">Patient Name:</span> {lastPayment.patient.name}</p>
+                    <p><span className="font-medium">Patient ID:</span> {lastPayment.patientId}</p>
+                    <p><span className="font-medium">Age / Gender:</span> {lastPayment.patient.age} years / {lastPayment.patient.gender}</p>
+                    <p><span className="font-medium">Contact:</span> {lastPayment.patient.phone}</p>
+                  </div>
+                </div>
+
+                {/* Charges Breakdown */}
+                <div className="mb-4">
+                  <h2 className="font-bold text-sm mb-2 text-primary">CHARGES BREAKDOWN</h2>
+                  <table className="w-full border-collapse border text-sm">
+                    <thead>
+                      <tr className="bg-primary/10">
+                        <th className="border p-2 text-left font-semibold">#</th>
+                        <th className="border p-2 text-left font-semibold">Description</th>
+                        <th className="border p-2 text-center font-semibold">Qty</th>
+                        <th className="border p-2 text-right font-semibold">Rate (Rs.)</th>
+                        <th className="border p-2 text-right font-semibold">Amount (Rs.)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border p-2">1</td>
+                        <td className="border p-2">Consultation Fee</td>
+                        <td className="border p-2 text-center">1</td>
+                        <td className="border p-2 text-right">{lastPayment.consultationFee.toFixed(2)}</td>
+                        <td className="border p-2 text-right">{lastPayment.consultationFee.toFixed(2)}</td>
+                      </tr>
+                      {lastPayment.labFee > 0 && (
+                        <tr>
+                          <td className="border p-2">2</td>
+                          <td className="border p-2">Laboratory Fee</td>
+                          <td className="border p-2 text-center">1</td>
+                          <td className="border p-2 text-right">{lastPayment.labFee.toFixed(2)}</td>
+                          <td className="border p-2 text-right">{lastPayment.labFee.toFixed(2)}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Medicines Table */}
+                {lastPayment.medicines && lastPayment.medicines.length > 0 && (
+                  <div className="mb-4">
+                    <h2 className="font-bold text-sm mb-2 text-primary">MEDICINES DISPENSED</h2>
+                    <table className="w-full border-collapse border text-sm">
+                      <thead>
+                        <tr className="bg-primary/10">
+                          <th className="border p-2 text-left font-semibold">#</th>
+                          <th className="border p-2 text-left font-semibold">Medicine Name</th>
+                          <th className="border p-2 text-center font-semibold">Quantity</th>
+                          <th className="border p-2 text-right font-semibold">Unit Price (Rs.)</th>
+                          <th className="border p-2 text-right font-semibold">Amount (Rs.)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lastPayment.medicines.map((m: any, index: number) => (
+                          <tr key={index}>
+                            <td className="border p-2">{index + 1}</td>
+                            <td className="border p-2">{m.name}</td>
+                            <td className="border p-2 text-center">{m.quantity}</td>
+                            <td className="border p-2 text-right">{m.price.toFixed(2)}</td>
+                            <td className="border p-2 text-right">{(m.price * m.quantity).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Total Summary */}
+                <div className="flex justify-end mb-6">
+                  <div className="w-64 border rounded">
+                    <div className="flex justify-between p-2 border-b text-sm">
+                      <span>Consultation Fee:</span>
+                      <span>Rs. {lastPayment.consultationFee.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between p-2 border-b text-sm">
+                      <span>Lab Fee:</span>
+                      <span>Rs. {lastPayment.labFee.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between p-2 border-b text-sm">
+                      <span>Medicine Fee:</span>
+                      <span>Rs. {lastPayment.medicineFee.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-primary/10 font-bold">
+                      <span>TOTAL AMOUNT:</span>
+                      <span>Rs. {lastPayment.totalAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between p-2 text-sm bg-muted/50">
+                      <span>Payment Mode:</span>
+                      <span className="font-medium">{lastPayment.paymentMode}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amount in Words */}
+                <div className="mb-6 p-3 border rounded bg-muted/30">
+                  <p className="text-sm">
+                    <span className="font-medium">Amount in Words:</span> Rupees {numberToWords(lastPayment.totalAmount)} Only
+                  </p>
+                </div>
+
+                {/* Signature and Stamp Section */}
+                <div className="grid grid-cols-2 gap-8 mt-8 mb-6">
+                  <div className="text-center">
+                    <div className="border-2 border-dashed border-muted-foreground/30 h-20 mb-2 flex items-center justify-center">
+                      <span className="text-muted-foreground text-sm">Patient Signature</span>
+                    </div>
+                    <p className="text-sm font-medium">Received By</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="border-2 border-dashed border-muted-foreground/30 h-20 mb-2 flex items-center justify-center">
+                      <span className="text-muted-foreground text-sm">Authorized Signature & Stamp</span>
+                    </div>
+                    <p className="text-sm font-medium">For MediCare Hospital</p>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="border-t pt-4 text-center text-xs text-muted-foreground">
+                  <p className="font-medium mb-1">Thank you for choosing MediCare Hospital!</p>
+                  <p>This is a computer-generated receipt and is valid without signature.</p>
+                  <p className="mt-1">For any queries, please contact: +91 98765 43210 | care@medicare.com</p>
+                </div>
+              </div>
             </Card>
           )}
 
