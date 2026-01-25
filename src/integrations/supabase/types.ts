@@ -14,7 +14,264 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lab_results: {
+        Row: {
+          collected_at: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          notified_at: string | null
+          patient_age: number | null
+          patient_id: string | null
+          patient_name: string | null
+          report_date: string | null
+          status: string | null
+          technician: string | null
+          test_date: string | null
+          tests: Json | null
+        }
+        Insert: {
+          collected_at?: string | null
+          created_at?: string | null
+          id: string
+          notes?: string | null
+          notified_at?: string | null
+          patient_age?: number | null
+          patient_id?: string | null
+          patient_name?: string | null
+          report_date?: string | null
+          status?: string | null
+          technician?: string | null
+          test_date?: string | null
+          tests?: Json | null
+        }
+        Update: {
+          collected_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          notified_at?: string | null
+          patient_age?: number | null
+          patient_id?: string | null
+          patient_name?: string | null
+          report_date?: string | null
+          status?: string | null
+          technician?: string | null
+          test_date?: string | null
+          tests?: Json | null
+        }
+        Relationships: []
+      }
+      patient_services: {
+        Row: {
+          created_at: string | null
+          grand_total: number | null
+          id: string
+          patient_id: string
+          services: Json | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          grand_total?: number | null
+          id: string
+          patient_id: string
+          services?: Json | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          grand_total?: number | null
+          id?: string
+          patient_id?: string
+          services?: Json | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          address: string | null
+          age: number | null
+          created_at: string | null
+          gender: string | null
+          id: string
+          name: string
+          phone: string | null
+          symptoms: string | null
+          visit_date: string | null
+        }
+        Insert: {
+          address?: string | null
+          age?: number | null
+          created_at?: string | null
+          gender?: string | null
+          id: string
+          name: string
+          phone?: string | null
+          symptoms?: string | null
+          visit_date?: string | null
+        }
+        Update: {
+          address?: string | null
+          age?: number | null
+          created_at?: string | null
+          gender?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          symptoms?: string | null
+          visit_date?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          consultation_fee: number | null
+          created_at: string | null
+          id: string
+          lab_fee: number | null
+          medicine_fee: number | null
+          medicines: Json | null
+          patient_id: string | null
+          patient_name: string | null
+          payment_mode: string | null
+          total_amount: number | null
+        }
+        Insert: {
+          consultation_fee?: number | null
+          created_at?: string | null
+          id: string
+          lab_fee?: number | null
+          medicine_fee?: number | null
+          medicines?: Json | null
+          patient_id?: string | null
+          patient_name?: string | null
+          payment_mode?: string | null
+          total_amount?: number | null
+        }
+        Update: {
+          consultation_fee?: number | null
+          created_at?: string | null
+          id?: string
+          lab_fee?: number | null
+          medicine_fee?: number | null
+          medicines?: Json | null
+          patient_id?: string | null
+          patient_name?: string | null
+          payment_mode?: string | null
+          total_amount?: number | null
+        }
+        Relationships: []
+      }
+      prescriptions: {
+        Row: {
+          created_at: string | null
+          diagnosis: string | null
+          doctor_notes: string | null
+          follow_up_date: string | null
+          generated_text: string | null
+          id: string
+          lab_tests: Json | null
+          medicines: Json | null
+          patient_age: number | null
+          patient_id: string | null
+          patient_name: string | null
+          precautions: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          diagnosis?: string | null
+          doctor_notes?: string | null
+          follow_up_date?: string | null
+          generated_text?: string | null
+          id: string
+          lab_tests?: Json | null
+          medicines?: Json | null
+          patient_age?: number | null
+          patient_id?: string | null
+          patient_name?: string | null
+          precautions?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          diagnosis?: string | null
+          doctor_notes?: string | null
+          follow_up_date?: string | null
+          generated_text?: string | null
+          id?: string
+          lab_tests?: Json | null
+          medicines?: Json | null
+          patient_age?: number | null
+          patient_id?: string | null
+          patient_name?: string | null
+          precautions?: string | null
+        }
+        Relationships: []
+      }
+      stock: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string
+          low_stock_threshold: number | null
+          name: string
+          price: number | null
+          quantity: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id: string
+          low_stock_threshold?: number | null
+          name: string
+          price?: number | null
+          quantity?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          low_stock_threshold?: number | null
+          name?: string
+          price?: number | null
+          quantity?: number | null
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          password: string
+          role: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          is_active?: boolean | null
+          name: string
+          password: string
+          role?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          password?: string
+          role?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { patientsApi, PatientDTO } from '@/services/accessApi';
+import { supabasePatientsApi, PatientRow } from '@/services/supabaseApi';
+import { isCloudEnvironment } from '@/lib/environment';
 import { Patient } from '@/types/hospital';
 
 // Demo patients for testing when backend is unavailable
@@ -61,25 +63,58 @@ function dtoToPatient(dto: PatientDTO): Patient {
   };
 }
 
+// Convert Supabase row to local Patient type
+function rowToPatient(row: PatientRow): Patient {
+  return {
+    id: row.id,
+    name: row.name,
+    age: row.age || 0,
+    gender: (row.gender as 'Male' | 'Female' | 'Other') || 'Other',
+    phone: row.phone || '',
+    address: row.address || '',
+    visitDate: row.visit_date || '',
+    symptoms: row.symptoms || '',
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
 export function useAccessPatients() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isCloud, setIsCloud] = useState(false);
 
   const fetchPatients = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await patientsApi.getAll();
-      setPatients(data.map(dtoToPatient));
-      setIsDemoMode(false);
+      
+      // Check if running in cloud environment
+      if (isCloudEnvironment()) {
+        setIsCloud(true);
+        const data = await supabasePatientsApi.getAll();
+        setPatients(data.map(rowToPatient));
+        setIsDemoMode(false);
+      } else {
+        // Try local SQLite backend
+        setIsCloud(false);
+        try {
+          const data = await patientsApi.getAll();
+          setPatients(data.map(dtoToPatient));
+          setIsDemoMode(false);
+        } catch {
+          // Fallback to demo mode
+          console.log('Backend unavailable, using demo mode for patients');
+          setPatients(getDemoPatients());
+          setIsDemoMode(true);
+        }
+      }
     } catch (err) {
-      console.log('Backend unavailable, using demo mode for patients');
-      // Fallback to demo mode
+      console.error('Error fetching patients:', err);
       setPatients(getDemoPatients());
       setIsDemoMode(true);
-      setError(null); // Don't show error in demo mode
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -91,6 +126,22 @@ export function useAccessPatients() {
 
   const addPatient = async (patientData: Omit<Patient, 'id' | 'createdAt'>) => {
     const id = `PAT-${Date.now().toString(36).toUpperCase()}`;
+    
+    if (isCloud) {
+      // Use Supabase
+      await supabasePatientsApi.create({
+        id,
+        name: patientData.name,
+        age: patientData.age,
+        gender: patientData.gender,
+        phone: patientData.phone,
+        address: patientData.address,
+        visit_date: patientData.visitDate,
+        symptoms: patientData.symptoms,
+      });
+      await fetchPatients();
+      return id;
+    }
     
     if (isDemoMode) {
       // Demo mode - use local storage
@@ -105,6 +156,7 @@ export function useAccessPatients() {
       return id;
     }
 
+    // SQLite backend
     try {
       await patientsApi.create({
         ID: id,
@@ -116,9 +168,9 @@ export function useAccessPatients() {
         VisitDate: patientData.visitDate,
         Symptoms: patientData.symptoms,
       });
-      await fetchPatients(); // Refresh list
+      await fetchPatients();
       return id;
-    } catch (err) {
+    } catch {
       // Fallback to demo mode on error
       console.log('Backend unavailable, adding patient in demo mode');
       const newPatient: Patient = {
@@ -135,8 +187,21 @@ export function useAccessPatients() {
   };
 
   const updatePatient = async (id: string, patientData: Partial<Patient>) => {
+    if (isCloud) {
+      await supabasePatientsApi.update(id, {
+        name: patientData.name,
+        age: patientData.age,
+        gender: patientData.gender,
+        phone: patientData.phone,
+        address: patientData.address,
+        visit_date: patientData.visitDate,
+        symptoms: patientData.symptoms,
+      });
+      await fetchPatients();
+      return;
+    }
+    
     if (isDemoMode) {
-      // Demo mode - update local storage
       const updatedPatients = patients.map(p => 
         p.id === id ? { ...p, ...patientData } : p
       );
@@ -155,9 +220,8 @@ export function useAccessPatients() {
         VisitDate: patientData.visitDate,
         Symptoms: patientData.symptoms,
       });
-      await fetchPatients(); // Refresh list
-    } catch (err) {
-      // Fallback to demo mode
+      await fetchPatients();
+    } catch {
       console.log('Backend unavailable, updating patient in demo mode');
       const updatedPatients = patients.map(p => 
         p.id === id ? { ...p, ...patientData } : p
@@ -169,8 +233,13 @@ export function useAccessPatients() {
   };
 
   const deletePatient = async (id: string) => {
+    if (isCloud) {
+      await supabasePatientsApi.delete(id);
+      await fetchPatients();
+      return;
+    }
+    
     if (isDemoMode) {
-      // Demo mode - delete from local storage
       const updatedPatients = patients.filter(p => p.id !== id);
       setPatients(updatedPatients);
       saveDemoPatients(updatedPatients);
@@ -179,9 +248,8 @@ export function useAccessPatients() {
 
     try {
       await patientsApi.delete(id);
-      await fetchPatients(); // Refresh list
-    } catch (err) {
-      // Fallback to demo mode
+      await fetchPatients();
+    } catch {
       console.log('Backend unavailable, deleting patient in demo mode');
       const updatedPatients = patients.filter(p => p.id !== id);
       setPatients(updatedPatients);
@@ -195,6 +263,7 @@ export function useAccessPatients() {
     loading,
     error,
     isDemoMode,
+    isCloud,
     addPatient,
     updatePatient,
     deletePatient,

@@ -39,8 +39,8 @@ import { AdditionalServicesPanel } from '@/components/patients/AdditionalService
 import { ServicesSummaryDialog } from '@/components/patients/ServicesSummaryDialog';
 
 export function PatientsPage() {
-  const { patients, loading, error, isDemoMode, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
-  const { addService, isDemoMode: isServicesDemoMode } = usePatientServices();
+  const { patients, loading, error, isDemoMode, isCloud, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
+  const { addService } = usePatientServices();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isServicesDialogOpen, setIsServicesDialogOpen] = useState(false);
@@ -210,10 +210,15 @@ export function PatientsPage() {
         }
       />
 
-      {/* Demo Mode Banner */}
-      {isDemoMode && (
+      {/* Cloud/Demo Mode Banner */}
+      {isDemoMode && !isCloud && (
         <div className="bg-amber-500/10 border border-amber-500 text-amber-700 px-4 py-3 rounded-lg mb-4">
           <strong>Demo Mode:</strong> Backend server not available. Data is stored locally in your browser.
+        </div>
+      )}
+      {isCloud && (
+        <div className="bg-blue-500/10 border border-blue-500 text-blue-700 px-4 py-3 rounded-lg mb-4">
+          <strong>Cloud Mode:</strong> Connected to Lovable Cloud database. Data persists across sessions.
         </div>
       )}
 
