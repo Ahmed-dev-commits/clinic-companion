@@ -28,17 +28,25 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, Edit, Trash2, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, RefreshCw, ClipboardPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Patient } from '@/types/hospital';
+import { ServicesState } from '@/types/services';
 import { format } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { AdditionalServicesPanel } from '@/components/patients/AdditionalServicesPanel';
+import { ServicesSummaryDialog } from '@/components/patients/ServicesSummaryDialog';
 
 export function PatientsPage() {
   const { patients, loading, error, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isServicesDialogOpen, setIsServicesDialogOpen] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [currentServices, setCurrentServices] = useState<ServicesState | null>(null);
+  const [currentTotal, setCurrentTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,16 +122,55 @@ export function PatientsPage() {
       if (editingPatient) {
         await updatePatient(editingPatient.id, patientData);
         toast.success('Patient updated successfully');
+        handleCloseDialog();
       } else {
         const id = await addPatient(patientData);
         toast.success(`Patient registered with ID: ${id}`);
+        // After registration, open services dialog
+        const newPatient: Patient = { ...patientData, id, createdAt: new Date().toISOString() };
+        setSelectedPatient(newPatient);
+        setIsDialogOpen(false);
+        setIsServicesDialogOpen(true);
       }
-      handleCloseDialog();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Operation failed');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleAddServices = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setIsServicesDialogOpen(true);
+  };
+
+  const handleSaveServices = async (services: ServicesState, grandTotal: number) => {
+    if (!selectedPatient) return;
+    try {
+      const serviceId = `SRV-${Date.now().toString(36).toUpperCase()}`;
+      await fetch('http://localhost:3001/api/patient-services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: serviceId,
+          patientId: selectedPatient.id,
+          services,
+          grandTotal,
+          status: 'Completed',
+        }),
+      });
+      toast.success('Services saved successfully!');
+      setIsServicesDialogOpen(false);
+      setSelectedPatient(null);
+    } catch (err) {
+      toast.error('Failed to save services');
+    }
+  };
+
+  const handleViewSummary = (services: ServicesState, grandTotal: number) => {
+    setCurrentServices(services);
+    setCurrentTotal(grandTotal);
+    setIsSummaryOpen(true);
   };
 
   const handleDelete = async (patient: Patient) => {
@@ -241,7 +288,28 @@ export function PatientsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          title="Add Services"
+                          onClick={() => handleAddServices(patient)}
+                        >
+                          <ClipboardPlus className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleOpenDialog(patient)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(patient)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -375,6 +443,38 @@ export function PatientsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Additional Services Dialog */}
+      <Dialog open={isServicesDialogOpen} onOpenChange={setIsServicesDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Additional Services</DialogTitle>
+            <DialogDescription>
+              Add optional services for the registered patient
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPatient && (
+            <AdditionalServicesPanel
+              patientId={selectedPatient.id}
+              patientName={selectedPatient.name}
+              onSave={handleSaveServices}
+              onViewSummary={handleViewSummary}
+              isSubmitting={isSubmitting}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Summary Dialog */}
+      {selectedPatient && currentServices && (
+        <ServicesSummaryDialog
+          open={isSummaryOpen}
+          onOpenChange={setIsSummaryOpen}
+          patient={selectedPatient}
+          services={currentServices}
+          grandTotal={currentTotal}
+        />
+      )}
     </div>
   );
 }

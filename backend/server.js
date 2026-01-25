@@ -107,6 +107,44 @@ function initializeDatabase() {
     )
   `);
 
+  // PatientServices table for additional services
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS PatientServices (
+      ID TEXT PRIMARY KEY,
+      PatientID TEXT NOT NULL,
+      Services TEXT,
+      GrandTotal REAL DEFAULT 0,
+      Status TEXT DEFAULT 'Draft',
+      CreatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      UpdatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Users table for role management
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS Users (
+      ID TEXT PRIMARY KEY,
+      Username TEXT UNIQUE NOT NULL,
+      Password TEXT NOT NULL,
+      Name TEXT NOT NULL,
+      Role TEXT DEFAULT 'Receptionist',
+      IsActive INTEGER DEFAULT 1,
+      CreatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Insert default users if none exist
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM Users').get();
+  if (userCount.count === 0) {
+    const defaultUsers = [
+      { id: 'USR-001', username: 'receptionist', password: 'reception123', name: 'Front Desk', role: 'Receptionist' },
+      { id: 'USR-002', username: 'doctor', password: 'doctor123', name: 'Dr. Admin', role: 'Doctor' },
+      { id: 'USR-003', username: 'labtech', password: 'lab123', name: 'Lab Technician', role: 'LabTechnician' },
+    ];
+    const insertUser = db.prepare('INSERT INTO Users (ID, Username, Password, Name, Role) VALUES (?, ?, ?, ?, ?)');
+    defaultUsers.forEach(u => insertUser.run(u.id, u.username, u.password, u.name, u.role));
+  }
+
   console.log('✅ Database tables initialized');
 }
 
@@ -361,6 +399,80 @@ app.put('/api/lab-results/:id/status', (req, res) => {
     const stmt = db.prepare(query);
     stmt.run(...params);
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ PATIENT SERVICES API ============
+
+app.get('/api/patient-services', (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT * FROM PatientServices ORDER BY CreatedAt DESC');
+    res.json(stmt.all());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/patient-services/:patientId', (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT * FROM PatientServices WHERE PatientID = ? ORDER BY CreatedAt DESC');
+    res.json(stmt.all(req.params.patientId));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/patient-services', (req, res) => {
+  try {
+    const { id, patientId, services, grandTotal, status } = req.body;
+    const now = new Date().toISOString();
+    const stmt = db.prepare(`
+      INSERT INTO PatientServices (ID, PatientID, Services, GrandTotal, Status, CreatedAt, UpdatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(id, patientId, JSON.stringify(services), grandTotal, status || 'Draft', now, now);
+    res.json({ success: true, id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/patient-services/:id', (req, res) => {
+  try {
+    const { services, grandTotal, status } = req.body;
+    const stmt = db.prepare(`
+      UPDATE PatientServices SET Services = ?, GrandTotal = ?, Status = ?, UpdatedAt = ? WHERE ID = ?
+    `);
+    stmt.run(JSON.stringify(services), grandTotal, status, new Date().toISOString(), req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ USERS API ============
+
+app.get('/api/users', (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT ID, Username, Name, Role, IsActive, CreatedAt FROM Users');
+    res.json(stmt.all());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/users/login', (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const stmt = db.prepare('SELECT ID, Username, Name, Role FROM Users WHERE Username = ? AND Password = ? AND IsActive = 1');
+    const user = stmt.get(username, password);
+    if (user) {
+      res.json({ success: true, user });
+    } else {
+      res.status(401).json({ error: 'Invalid credentials' });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
