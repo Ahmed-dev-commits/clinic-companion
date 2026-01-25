@@ -265,6 +265,64 @@ export const labResultsApi = {
 export const healthCheck = () => 
   apiCall<{ status: string; database: string; timestamp: string }>('/health');
 
+// ============ PATIENT SERVICES API ============
+
+export interface PatientServicesDTO {
+  ID: string;
+  PatientID: string;
+  Services: string; // JSON string
+  GrandTotal: number;
+  Status: string;
+  CreatedAt: string;
+  UpdatedAt: string;
+}
+
+export const patientServicesApi = {
+  getAll: () => apiCall<PatientServicesDTO[]>('/patient-services'),
+  
+  getByPatientId: (patientId: string) => 
+    apiCall<PatientServicesDTO[]>(`/patient-services/${patientId}`),
+  
+  create: (service: {
+    id: string;
+    patientId: string;
+    services: any;
+    grandTotal: number;
+    status: string;
+  }) =>
+    apiCall<{ success: boolean; id: string }>('/patient-services', {
+      method: 'POST',
+      body: JSON.stringify(service),
+    }),
+  
+  update: (id: string, service: { services: any; grandTotal: number; status: string }) =>
+    apiCall<{ success: boolean }>(`/patient-services/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(service),
+    }),
+};
+
+// ============ USERS API ============
+
+export interface UserDTO {
+  ID: string;
+  Username: string;
+  Name: string;
+  Role: string;
+  IsActive: number;
+  CreatedAt: string;
+}
+
+export const usersApi = {
+  getAll: () => apiCall<UserDTO[]>('/users'),
+  
+  login: (username: string, password: string) =>
+    apiCall<{ success: boolean; user: UserDTO }>('/users/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+};
+
 // Export all APIs
 export const accessDatabase = {
   patients: patientsApi,
@@ -272,6 +330,8 @@ export const accessDatabase = {
   payments: paymentsApi,
   prescriptions: prescriptionsApi,
   labResults: labResultsApi,
+  patientServices: patientServicesApi,
+  users: usersApi,
   healthCheck,
 };
 
