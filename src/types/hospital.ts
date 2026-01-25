@@ -72,6 +72,8 @@ export interface LabTestResult {
   status: 'Normal' | 'High' | 'Low' | 'Critical';
 }
 
+export type LabResultStatus = 'Sample Collected' | 'Processing' | 'Ready' | 'Notified' | 'Collected';
+
 export interface LabResult {
   id: string;
   patientId: string;
@@ -82,5 +84,8 @@ export interface LabResult {
   tests: LabTestResult[];
   notes: string;
   technician: string;
+  status: LabResultStatus;
+  notifiedAt?: string;
+  collectedAt?: string;
   createdAt: string;
 }

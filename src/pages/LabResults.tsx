@@ -15,11 +15,20 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Printer, Download, Search, FlaskConical } from 'lucide-react';
+import { Plus, Trash2, Printer, Download, Search, FlaskConical, Bell, CheckCircle, Clock, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { LabTestResult, LabResult } from '@/types/hospital';
+import { LabTestResult, LabResult, LabResultStatus } from '@/types/hospital';
 import jsPDF from 'jspdf';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 // Common lab tests with normal ranges
 const commonLabTests = [
@@ -47,7 +56,7 @@ const commonLabTests = [
 ];
 
 export function LabResultsPage() {
-  const { patients, labResults, addLabResult } = useHospitalStore();
+  const { patients, labResults, addLabResult, updateLabResultStatus, notifyPatient, markAsCollected } = useHospitalStore();
   const { settings } = useSettingsStore();
   
   const [selectedPatientId, setSelectedPatientId] = useState('');
@@ -143,6 +152,7 @@ export function LabResultsPage() {
       tests,
       notes: notes.trim(),
       technician: technician.trim(),
+      status: 'Sample Collected',
     });
 
     toast.success('Lab result added successfully');
@@ -426,6 +436,41 @@ export function LabResultsPage() {
     }
   };
 
+  const getLabStatusColor = (status: LabResultStatus) => {
+    switch (status) {
+      case 'Sample Collected': return 'bg-blue-100 text-blue-800';
+      case 'Processing': return 'bg-yellow-100 text-yellow-800';
+      case 'Ready': return 'bg-green-100 text-green-800';
+      case 'Notified': return 'bg-purple-100 text-purple-800';
+      case 'Collected': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getLabStatusIcon = (status: LabResultStatus) => {
+    switch (status) {
+      case 'Sample Collected': return <Package className="h-3 w-3" />;
+      case 'Processing': return <Clock className="h-3 w-3" />;
+      case 'Ready': return <CheckCircle className="h-3 w-3" />;
+      case 'Notified': return <Bell className="h-3 w-3" />;
+      case 'Collected': return <CheckCircle className="h-3 w-3" />;
+      default: return null;
+    }
+  };
+
+  const handleNotifyPatient = (lab: LabResult) => {
+    const patient = patients.find(p => p.id === lab.patientId);
+    if (patient) {
+      notifyPatient(lab.id);
+      toast.success(`Patient ${patient.name} notified! Phone: ${patient.phone}`);
+    }
+  };
+
+  const handleMarkCollected = (labId: string) => {
+    markAsCollected(labId);
+    toast.success('Lab report marked as collected');
+  };
+
   return (
     <div>
       <PageHeader
@@ -698,12 +743,95 @@ export function LabResultsPage() {
                             {safeFormatDate(lab.testDate, 'MMM dd, yyyy')} • {lab.tests.length} tests
                           </p>
                         </div>
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {lab.id}
-                        </Badge>
+                        <div className="flex flex-col gap-1 items-end">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {lab.id}
+                          </Badge>
+                          <Badge className={`text-xs flex items-center gap-1 ${getLabStatusColor(lab.status || 'Sample Collected')}`}>
+                            {getLabStatusIcon(lab.status || 'Sample Collected')}
+                            {lab.status || 'Sample Collected'}
+                          </Badge>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3 print:hidden">
+                      {/* Status workflow buttons */}
+                      <div className="flex flex-wrap gap-2 pb-2 border-b">
+                        <Select 
+                          value={lab.status || 'Sample Collected'} 
+                          onValueChange={(v: LabResultStatus) => updateLabResultStatus(lab.id, v)}
+                        >
+                          <SelectTrigger className="w-[160px] h-8 text-xs">
+                            <SelectValue placeholder="Update Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Sample Collected">Sample Collected</SelectItem>
+                            <SelectItem value="Processing">Processing</SelectItem>
+                            <SelectItem value="Ready">Ready</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        {lab.status === 'Ready' && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="default" className="h-8 text-xs bg-green-600 hover:bg-green-700">
+                                <Bell className="mr-1 h-3 w-3" />
+                                Notify Patient
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Notify Patient</DialogTitle>
+                                <DialogDescription>
+                                  Send notification to patient that their lab report is ready for collection.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                  <p className="text-sm"><strong>Patient:</strong> {lab.patientName}</p>
+                                  <p className="text-sm"><strong>Phone:</strong> {patients.find(p => p.id === lab.patientId)?.phone}</p>
+                                  <p className="text-sm"><strong>Report ID:</strong> {lab.id}</p>
+                                </div>
+                                <div className="p-3 bg-muted rounded-lg">
+                                  <p className="text-sm">
+                                    📋 Dear {lab.patientName}, your lab report ({lab.id}) is ready for collection. Please visit the clinic with your ID. Thank you!
+                                  </p>
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button variant="default" onClick={() => handleNotifyPatient(lab)}>
+                                  <Bell className="mr-2 h-4 w-4" />
+                                  Send Notification
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+
+                        {lab.status === 'Notified' && (
+                          <Button 
+                            size="sm" 
+                            variant="default" 
+                            className="h-8 text-xs"
+                            onClick={() => handleMarkCollected(lab.id)}
+                          >
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            Mark Collected
+                          </Button>
+                        )}
+
+                        {lab.notifiedAt && (
+                          <span className="text-xs text-muted-foreground flex items-center">
+                            Notified: {safeFormatDate(lab.notifiedAt, 'MMM dd, HH:mm')}
+                          </span>
+                        )}
+                        {lab.collectedAt && (
+                          <span className="text-xs text-muted-foreground flex items-center">
+                            Collected: {safeFormatDate(lab.collectedAt, 'MMM dd, HH:mm')}
+                          </span>
+                        )}
+                      </div>
+
                       {/* Test summary */}
                       <div className="space-y-1">
                         {lab.tests.slice(0, 3).map((test, i) => (

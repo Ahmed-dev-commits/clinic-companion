@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Patient, Payment, StockItem, Prescription, LabResult } from '@/types/hospital';
+import { Patient, Payment, StockItem, Prescription, LabResult, LabResultStatus } from '@/types/hospital';
 
 // Helper to generate unique IDs
 const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -118,6 +118,7 @@ const sampleLabResults: LabResult[] = [
     ],
     notes: 'Slightly elevated cholesterol. Recommend dietary changes.',
     technician: 'Lab Tech - Asif',
+    status: 'Ready',
     createdAt: new Date().toISOString(),
   },
 ];
@@ -149,6 +150,9 @@ interface HospitalStore {
 
   // Lab Result actions
   addLabResult: (labResult: Omit<LabResult, 'id' | 'createdAt'>) => string;
+  updateLabResultStatus: (id: string, status: LabResultStatus) => void;
+  notifyPatient: (id: string) => void;
+  markAsCollected: (id: string) => void;
 
   // Getters
   getPatientById: (id: string) => Patient | undefined;
@@ -261,6 +265,30 @@ export const useHospitalStore = create<HospitalStore>()(
         };
         set((state) => ({ labResults: [...state.labResults, newLabResult] }));
         return id;
+      },
+
+      updateLabResultStatus: (id, status) => {
+        set((state) => ({
+          labResults: state.labResults.map((l) =>
+            l.id === id ? { ...l, status } : l
+          ),
+        }));
+      },
+
+      notifyPatient: (id) => {
+        set((state) => ({
+          labResults: state.labResults.map((l) =>
+            l.id === id ? { ...l, status: 'Notified' as LabResultStatus, notifiedAt: new Date().toISOString() } : l
+          ),
+        }));
+      },
+
+      markAsCollected: (id) => {
+        set((state) => ({
+          labResults: state.labResults.map((l) =>
+            l.id === id ? { ...l, status: 'Collected' as LabResultStatus, collectedAt: new Date().toISOString() } : l
+          ),
+        }));
       },
 
       // Getters
