@@ -2,8 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Patient, Payment, StockItem, Prescription, LabResult, LabResultStatus } from '@/types/hospital';
 
-// Helper to generate unique IDs
-const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+// Helper to generate unique IDs - shorter format
+const generateId = (prefix: string) => {
+  const num = Math.floor(Math.random() * 9000) + 1000; // 4-digit number
+  const suffix = Math.random().toString(36).substr(2, 3).toUpperCase(); // 3-char suffix
+  return `${prefix}-${num}${suffix}`;
+};
 
 // Sample data for initial state
 const samplePatients: Patient[] = [
