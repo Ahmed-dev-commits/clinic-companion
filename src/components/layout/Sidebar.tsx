@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -10,25 +10,57 @@ import {
   X,
   FlaskConical,
   Settings,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useAuthStore } from '@/store/authStore';
+import { UserRole } from '@/types/services';
 
-// Navigation items for the sidebar
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/patients', label: 'Patients', icon: Users },
-  { path: '/fees', label: 'Fee Collection', icon: CreditCard },
-  { path: '/stock', label: 'Stock', icon: Package },
-  { path: '/prescriptions', label: 'Prescriptions', icon: FileText },
-  { path: '/lab-results', label: 'Lab Results', icon: FlaskConical },
-  { path: '/settings', label: 'Settings', icon: Settings },
+// Navigation items for the sidebar with role restrictions
+const navItems: { path: string; label: string; icon: React.ComponentType<any>; roles: UserRole[] }[] = [
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['Receptionist', 'Doctor', 'LabTechnician', 'Admin'] },
+  { path: '/patients', label: 'Patients', icon: Users, roles: ['Receptionist', 'Doctor', 'Admin'] },
+  { path: '/fees', label: 'Fee Collection', icon: CreditCard, roles: ['Receptionist', 'Admin'] },
+  { path: '/stock', label: 'Stock', icon: Package, roles: ['Receptionist', 'Doctor', 'Admin'] },
+  { path: '/prescriptions', label: 'Prescriptions', icon: FileText, roles: ['Doctor', 'Admin'] },
+  { path: '/lab-results', label: 'Lab Results', icon: FlaskConical, roles: ['LabTechnician', 'Doctor', 'Admin'] },
+  { path: '/settings', label: 'Settings', icon: Settings, roles: ['Receptionist', 'Doctor', 'LabTechnician', 'Admin'] },
 ];
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout, hasRole } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  // Filter nav items based on user role
+  const filteredNavItems = navItems.filter((item) => 
+    user && item.roles.includes(user.role)
+  );
+
+  const getRoleBadgeColor = (role: UserRole) => {
+    switch (role) {
+      case 'Receptionist':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'Doctor':
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'LabTechnician':
+        return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'Admin':
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
+      default:
+        return '';
+    }
+  };
 
   const NavContent = () => (
     <>
@@ -43,9 +75,28 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* User Info */}
+      {user && (
+        <div className="px-4 py-3 border-b border-sidebar-border">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-sidebar-primary/20 flex items-center justify-center">
+              <User className="h-5 w-5 text-sidebar-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {user.name}
+              </p>
+              <Badge variant="outline" className={cn("text-xs", getRoleBadgeColor(user.role))}>
+                {user.role}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Links */}
-      <nav className="flex-1 py-4 space-y-1">
-        {navItems.map((item) => {
+      <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
+        {filteredNavItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <NavLink
@@ -64,8 +115,16 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-sidebar-border p-4">
+      {/* Footer with Logout */}
+      <div className="border-t border-sidebar-border p-4 space-y-3">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          onClick={handleLogout}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign Out
+        </Button>
         <p className="text-xs text-sidebar-foreground/50 text-center">
           © 2024 MediCare HMS
         </p>
