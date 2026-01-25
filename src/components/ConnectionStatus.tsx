@@ -36,7 +36,7 @@ export function ConnectionStatus() {
     return (
       <Badge variant="default" className="gap-1 bg-green-600 hover:bg-green-700">
         <Database className="h-3 w-3" />
-        MS Access Connected
+        SQLite Connected
       </Badge>
     );
   }
