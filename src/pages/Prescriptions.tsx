@@ -31,6 +31,7 @@ export function PrescriptionsPage() {
   const [labTests, setLabTests] = useState<string[]>([]);
   const [doctorNotes, setDoctorNotes] = useState('');
   const [precautions, setPrecautions] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
   
   // New medicine form
   const [newMedicine, setNewMedicine] = useState({
@@ -119,6 +120,7 @@ export function PrescriptionsPage() {
       doctorNotes,
       precautions,
       generatedText,
+      followUpDate: followUpDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     });
 
     toast.success('Prescription created successfully');
@@ -130,6 +132,7 @@ export function PrescriptionsPage() {
     setLabTests([]);
     setDoctorNotes('');
     setPrecautions('');
+    setFollowUpDate('');
   };
 
   const handleCopy = (text: string) => {
@@ -405,7 +408,7 @@ export function PrescriptionsPage() {
     doc.text('FOLLOW-UP DATE:', margin + 4, yPos + 7);
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'normal');
-    doc.text(format(new Date(new Date(rx.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000), 'dd MMM yyyy'), margin + 38, yPos + 7);
+    doc.text(format(new Date(rx.followUpDate), 'dd MMM yyyy'), margin + 38, yPos + 7);
     
     // ============ FOOTER SECTION ============
     const footerY = pageHeight - 50;
@@ -450,7 +453,7 @@ export function PrescriptionsPage() {
     doc.setTextColor(...mutedColor);
     doc.setFontSize(7);
     doc.setFont('helvetica', 'italic');
-    const disclaimer = 'Disclaimer: This prescription is valid for 7 days from the date of issue. Please consult your doctor before taking any medicine. Self-medication can be harmful.';
+    const disclaimer = 'Please consult your doctor before taking any medicine. Self-medication can be harmful.';
     const splitDisclaimer = doc.splitTextToSize(disclaimer, contentWidth);
     doc.text(splitDisclaimer, pageWidth / 2, pageHeight - 14, { align: 'center' });
     
@@ -669,6 +672,16 @@ export function PrescriptionsPage() {
               />
             </div>
 
+            <div>
+              <Label>Follow-up Date</Label>
+              <Input
+                type="date"
+                value={followUpDate}
+                onChange={(e) => setFollowUpDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
             {/* Preview */}
             {selectedPatient && diagnosis && medicines.length > 0 && (
               <div>
@@ -708,8 +721,6 @@ export function PrescriptionsPage() {
             ) : (
               [...filteredPrescriptions].reverse().map((rx) => {
                 const patient = patients.find(p => p.id === rx.patientId);
-                const followUpDate = new Date(rx.createdAt);
-                followUpDate.setDate(followUpDate.getDate() + 7);
                 
                 return (
                 <Card key={rx.id} id={`prescription-${rx.id}`}>
@@ -815,7 +826,7 @@ export function PrescriptionsPage() {
                     
                     {/* Follow-up */}
                     <div className="mb-6 p-3 bg-muted/30 border rounded">
-                      <p className="text-sm"><span className="font-medium">Follow-up Date:</span> {format(followUpDate, 'MMMM dd, yyyy')}</p>
+                      <p className="text-sm"><span className="font-medium">Follow-up Date:</span> {format(new Date(rx.followUpDate), 'MMMM dd, yyyy')}</p>
                     </div>
                     
                     {/* Footer - Signature & Stamp */}
@@ -835,7 +846,7 @@ export function PrescriptionsPage() {
                     {/* Disclaimer */}
                     <div className="mt-6 pt-4 border-t text-center">
                       <p className="text-xs text-muted-foreground italic">
-                        This prescription is valid for 7 days. Please consult your doctor before taking any medicine.
+                        Please consult your doctor before taking any medicine. Self-medication can be harmful.
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         This is a computer-generated e-prescription from {settings.clinicName}.

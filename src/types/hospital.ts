@@ -53,6 +53,7 @@ export interface Prescription {
   doctorNotes: string;
   precautions: string;
   generatedText: string;
+  followUpDate: string;
   createdAt: string;
 }
 
