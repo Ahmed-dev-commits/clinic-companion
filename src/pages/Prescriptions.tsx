@@ -676,7 +676,7 @@ export function PrescriptionsPage() {
                         <p><span className="font-medium">Patient ID:</span> {rx.patientId}</p>
                         <p><span className="font-medium">Age / Gender:</span> {rx.patientAge} years / {patient?.gender || 'N/A'}</p>
                         <p><span className="font-medium">Date:</span> {format(new Date(rx.createdAt), 'MMMM dd, yyyy')}</p>
-                        <p><span className="font-medium">Contact:</span> {patient?.contact || 'N/A'}</p>
+                        <p><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
                         <p><span className="font-medium">Visit ID:</span> RX-{rx.id}</p>
                       </div>
                     </div>
@@ -820,7 +820,7 @@ export function PrescriptionsPage() {
                   </CardContent>
                 </Card>
                 );
-              }))
+              })
             )}
           </div>
         </div>
