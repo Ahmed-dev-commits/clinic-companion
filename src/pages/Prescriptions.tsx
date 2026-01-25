@@ -495,26 +495,79 @@ export function PrescriptionsPage() {
             <div className="border rounded-lg p-4 space-y-3">
               <Label className="text-sm font-medium">Add Medicine</Label>
               <div className="grid grid-cols-2 gap-2">
-                <Input
-                  placeholder="Medicine name"
+                <Select
                   value={newMedicine.name}
-                  onChange={(e) => setNewMedicine({ ...newMedicine, name: e.target.value })}
-                />
-                <Input
-                  placeholder="Dosage (e.g., 500mg)"
+                  onValueChange={(value) => setNewMedicine({ ...newMedicine, name: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select medicine" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stock.filter(s => s.quantity > 0).map((item) => (
+                      <SelectItem key={item.id} value={item.name}>
+                        {item.name} ({item.quantity} in stock)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
                   value={newMedicine.dosage}
-                  onChange={(e) => setNewMedicine({ ...newMedicine, dosage: e.target.value })}
-                />
-                <Input
-                  placeholder="Frequency (e.g., Twice daily)"
+                  onValueChange={(value) => setNewMedicine({ ...newMedicine, dosage: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Dosage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="50mg">50mg</SelectItem>
+                    <SelectItem value="100mg">100mg</SelectItem>
+                    <SelectItem value="250mg">250mg</SelectItem>
+                    <SelectItem value="500mg">500mg</SelectItem>
+                    <SelectItem value="650mg">650mg</SelectItem>
+                    <SelectItem value="1g">1g</SelectItem>
+                    <SelectItem value="5ml">5ml</SelectItem>
+                    <SelectItem value="10ml">10ml</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
                   value={newMedicine.frequency}
-                  onChange={(e) => setNewMedicine({ ...newMedicine, frequency: e.target.value })}
-                />
-                <Input
-                  placeholder="Duration (e.g., 5 days)"
+                  onValueChange={(value) => setNewMedicine({ ...newMedicine, frequency: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Once daily">Once daily</SelectItem>
+                    <SelectItem value="Twice daily">Twice daily</SelectItem>
+                    <SelectItem value="Thrice daily">Thrice daily</SelectItem>
+                    <SelectItem value="Every 4 hours">Every 4 hours</SelectItem>
+                    <SelectItem value="Every 6 hours">Every 6 hours</SelectItem>
+                    <SelectItem value="Every 8 hours">Every 8 hours</SelectItem>
+                    <SelectItem value="Before meals">Before meals</SelectItem>
+                    <SelectItem value="After meals">After meals</SelectItem>
+                    <SelectItem value="At bedtime">At bedtime</SelectItem>
+                    <SelectItem value="As needed">As needed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
                   value={newMedicine.duration}
-                  onChange={(e) => setNewMedicine({ ...newMedicine, duration: e.target.value })}
-                />
+                  onValueChange={(value) => setNewMedicine({ ...newMedicine, duration: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3 days">3 days</SelectItem>
+                    <SelectItem value="5 days">5 days</SelectItem>
+                    <SelectItem value="7 days">7 days</SelectItem>
+                    <SelectItem value="10 days">10 days</SelectItem>
+                    <SelectItem value="14 days">14 days</SelectItem>
+                    <SelectItem value="21 days">21 days</SelectItem>
+                    <SelectItem value="1 month">1 month</SelectItem>
+                    <SelectItem value="2 months">2 months</SelectItem>
+                    <SelectItem value="3 months">3 months</SelectItem>
+                    <SelectItem value="As directed">As directed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Button type="button" variant="secondary" size="sm" onClick={handleAddMedicine}>
                 <Plus className="mr-1 h-4 w-4" />
