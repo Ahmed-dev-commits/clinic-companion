@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { patientServicesApi, PatientServicesDTO } from '@/services/accessApi';
+import { supabasePatientServicesApi, PatientServicesRow } from '@/services/supabaseApi';
+import { isCloudEnvironment } from '@/lib/environment';
 import { ServicesState, PatientServices } from '@/types/services';
+import type { Json } from '@/integrations/supabase/types';
 
 // Get demo services from localStorage
 function getDemoServices(): PatientServices[] {
@@ -33,19 +36,48 @@ function dtoToPatientServices(dto: PatientServicesDTO): PatientServices {
   };
 }
 
+// Convert Supabase row to local type
+function rowToPatientServices(row: PatientServicesRow): PatientServices {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    services: typeof row.services === 'string' ? row.services : JSON.stringify(row.services),
+    grandTotal: row.grand_total || 0,
+    status: (row.status as 'Draft' | 'Completed') || 'Draft',
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || new Date().toISOString(),
+  };
+}
+
 export function usePatientServices() {
   const [services, setServices] = useState<PatientServices[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isCloud, setIsCloud] = useState(false);
 
   const fetchServices = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await patientServicesApi.getAll();
-      setServices(data.map(dtoToPatientServices));
-      setIsDemoMode(false);
+      
+      if (isCloudEnvironment()) {
+        setIsCloud(true);
+        const data = await supabasePatientServicesApi.getAll();
+        setServices(data.map(rowToPatientServices));
+        setIsDemoMode(false);
+      } else {
+        setIsCloud(false);
+        try {
+          const data = await patientServicesApi.getAll();
+          setServices(data.map(dtoToPatientServices));
+          setIsDemoMode(false);
+        } catch {
+          console.log('Backend unavailable, using demo mode for services');
+          setServices(getDemoServices());
+          setIsDemoMode(true);
+        }
+      }
     } catch (err) {
-      console.log('Backend unavailable, using demo mode for services');
+      console.error('Error fetching services:', err);
       setServices(getDemoServices());
       setIsDemoMode(true);
     } finally {
@@ -75,6 +107,18 @@ export function usePatientServices() {
       updatedAt: now,
     };
 
+    if (isCloud) {
+      await supabasePatientServicesApi.create({
+        id,
+        patient_id: patientId,
+        services: servicesState as unknown as Json,
+        grand_total: grandTotal,
+        status: 'Completed',
+      });
+      await fetchServices();
+      return id;
+    }
+
     if (isDemoMode) {
       const updatedServices = [...services, newService];
       setServices(updatedServices);
@@ -92,7 +136,7 @@ export function usePatientServices() {
       });
       await fetchServices();
       return id;
-    } catch (err) {
+    } catch {
       console.log('Backend unavailable, saving service in demo mode');
       const updatedServices = [...services, newService];
       setServices(updatedServices);
@@ -110,6 +154,7 @@ export function usePatientServices() {
     services,
     loading,
     isDemoMode,
+    isCloud,
     addService,
     getServicesByPatientId,
     refetch: fetchServices,

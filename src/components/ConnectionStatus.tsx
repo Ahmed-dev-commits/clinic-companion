@@ -1,18 +1,31 @@
 import { useState, useEffect } from 'react';
 import { healthCheck } from '@/services/accessApi';
+import { supabaseHealthCheck } from '@/services/supabaseApi';
+import { isCloudEnvironment } from '@/lib/environment';
 import { Badge } from '@/components/ui/badge';
-import { Database, WifiOff } from 'lucide-react';
+import { Database, Cloud, WifiOff } from 'lucide-react';
 
 export function ConnectionStatus() {
-  const [status, setStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [status, setStatus] = useState<'checking' | 'cloud' | 'sqlite' | 'disconnected'>('checking');
 
   useEffect(() => {
     const checkConnection = async () => {
-      try {
-        await healthCheck();
-        setStatus('connected');
-      } catch {
-        setStatus('disconnected');
+      // Check if running in cloud environment
+      if (isCloudEnvironment()) {
+        try {
+          const ok = await supabaseHealthCheck();
+          setStatus(ok ? 'cloud' : 'disconnected');
+        } catch {
+          setStatus('disconnected');
+        }
+      } else {
+        // Try local SQLite backend
+        try {
+          await healthCheck();
+          setStatus('sqlite');
+        } catch {
+          setStatus('disconnected');
+        }
       }
     };
 
@@ -32,7 +45,16 @@ export function ConnectionStatus() {
     );
   }
 
-  if (status === 'connected') {
+  if (status === 'cloud') {
+    return (
+      <Badge variant="default" className="gap-1 bg-blue-600 hover:bg-blue-700">
+        <Cloud className="h-3 w-3" />
+        Cloud Connected
+      </Badge>
+    );
+  }
+
+  if (status === 'sqlite') {
     return (
       <Badge variant="default" className="gap-1 bg-green-600 hover:bg-green-700">
         <Database className="h-3 w-3" />
@@ -44,7 +66,7 @@ export function ConnectionStatus() {
   return (
     <Badge variant="destructive" className="gap-1">
       <WifiOff className="h-3 w-3" />
-      Backend Offline
+      Demo Mode
     </Badge>
   );
 }
