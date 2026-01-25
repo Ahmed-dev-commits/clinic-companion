@@ -38,7 +38,7 @@ import { AdditionalServicesPanel } from '@/components/patients/AdditionalService
 import { ServicesSummaryDialog } from '@/components/patients/ServicesSummaryDialog';
 
 export function PatientsPage() {
-  const { patients, loading, error, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
+  const { patients, loading, error, isDemoMode, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isServicesDialogOpen, setIsServicesDialogOpen] = useState(false);
@@ -146,25 +146,33 @@ export function PatientsPage() {
 
   const handleSaveServices = async (services: ServicesState, grandTotal: number) => {
     if (!selectedPatient) return;
+    
+    const serviceId = `SRV-${Date.now().toString(36).toUpperCase()}`;
+    const serviceData = {
+      id: serviceId,
+      patientId: selectedPatient.id,
+      services,
+      grandTotal,
+      status: 'Completed',
+    };
+
     try {
-      const serviceId = `SRV-${Date.now().toString(36).toUpperCase()}`;
       await fetch('http://localhost:3001/api/patient-services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: serviceId,
-          patientId: selectedPatient.id,
-          services,
-          grandTotal,
-          status: 'Completed',
-        }),
+        body: JSON.stringify(serviceData),
       });
-      toast.success('Services saved successfully!');
-      setIsServicesDialogOpen(false);
-      setSelectedPatient(null);
     } catch (err) {
-      toast.error('Failed to save services');
+      // Save to localStorage in demo mode
+      console.log('Backend unavailable, saving services to local storage');
+      const existingServices = JSON.parse(localStorage.getItem('demo-services') || '[]');
+      existingServices.push({ ...serviceData, createdAt: new Date().toISOString() });
+      localStorage.setItem('demo-services', JSON.stringify(existingServices));
     }
+    
+    toast.success('Services saved successfully!');
+    setIsServicesDialogOpen(false);
+    setSelectedPatient(null);
   };
 
   const handleViewSummary = (services: ServicesState, grandTotal: number) => {
@@ -215,8 +223,15 @@ export function PatientsPage() {
         }
       />
 
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="bg-amber-500/10 border border-amber-500 text-amber-700 px-4 py-3 rounded-lg mb-4">
+          <strong>Demo Mode:</strong> Backend server not available. Data is stored locally in your browser.
+        </div>
+      )}
+
       {/* Error Banner */}
-      {error && (
+      {error && !isDemoMode && (
         <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg mb-4">
           <strong>Connection Error:</strong> {error}
           <p className="text-sm mt-1">Make sure the backend server is running on localhost:3001</p>
