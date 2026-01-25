@@ -98,9 +98,25 @@ export function LabResultsPage() {
     setTests(tests.filter((_, i) => i !== index));
   };
 
+  // Safe date formatter
+  const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+    if (!dateStr) return 'N/A';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return 'N/A';
+      return format(date, formatStr);
+    } catch {
+      return 'N/A';
+    }
+  };
+
   const handleSubmit = () => {
     if (!selectedPatientId) {
       toast.error('Please select a patient');
+      return;
+    }
+    if (!testDate || isNaN(new Date(testDate).getTime())) {
+      toast.error('Please enter a valid sample date');
       return;
     }
     if (tests.length === 0) {
@@ -112,7 +128,11 @@ export function LabResultsPage() {
       return;
     }
 
-    const patient = patients.find(p => p.id === selectedPatientId)!;
+    const patient = patients.find(p => p.id === selectedPatientId);
+    if (!patient) {
+      toast.error('Selected patient not found');
+      return;
+    }
 
     addLabResult({
       patientId: selectedPatientId,
@@ -121,8 +141,8 @@ export function LabResultsPage() {
       testDate,
       reportDate: new Date().toISOString().split('T')[0],
       tests,
-      notes,
-      technician,
+      notes: notes.trim(),
+      technician: technician.trim(),
     });
 
     toast.success('Lab result added successfully');
@@ -214,7 +234,7 @@ export function LabResultsPage() {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(`Report No: ${lab.id}`, pageWidth - margin, 25, { align: 'right' });
-    doc.text(`Report Date: ${format(new Date(lab.reportDate), 'dd MMM yyyy')}`, pageWidth - margin, 30, { align: 'right' });
+    doc.text(`Report Date: ${safeFormatDate(lab.reportDate, 'dd MMM yyyy')}`, pageWidth - margin, 30, { align: 'right' });
     
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.8);
@@ -251,9 +271,9 @@ export function LabResultsPage() {
     
     doc.setTextColor(...textColor);
     doc.setFontSize(9);
-    doc.text(format(new Date(lab.testDate), 'dd MMM yyyy'), rightCol + 25, yPos + 7);
-    doc.text(format(new Date(lab.reportDate), 'dd MMM yyyy'), rightCol + 25, yPos + 14);
-    doc.text(lab.technician, rightCol + 25, yPos + 21);
+    doc.text(safeFormatDate(lab.testDate, 'dd MMM yyyy'), rightCol + 25, yPos + 7);
+    doc.text(safeFormatDate(lab.reportDate, 'dd MMM yyyy'), rightCol + 25, yPos + 14);
+    doc.text(lab.technician || 'N/A', rightCol + 25, yPos + 21);
     
     yPos += 32;
     
@@ -592,7 +612,7 @@ export function LabResultsPage() {
                         <div className="text-right">
                           <h2 className="text-xl font-bold text-primary">LABORATORY REPORT</h2>
                           <p className="text-sm text-muted-foreground">Report No: {lab.id}</p>
-                          <p className="text-sm text-muted-foreground">Date: {format(new Date(lab.reportDate), 'MMMM dd, yyyy')}</p>
+                          <p className="text-sm text-muted-foreground">Date: {safeFormatDate(lab.reportDate, 'MMMM dd, yyyy')}</p>
                         </div>
                       </div>
                       
@@ -601,9 +621,9 @@ export function LabResultsPage() {
                         <h2 className="font-bold text-sm mb-2 text-primary">PATIENT INFORMATION</h2>
                         <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
                           <p><span className="font-medium">Patient Name:</span> {lab.patientName}</p>
-                          <p><span className="font-medium">Sample Date:</span> {format(new Date(lab.testDate), 'dd MMM yyyy')}</p>
+                          <p><span className="font-medium">Sample Date:</span> {safeFormatDate(lab.testDate, 'dd MMM yyyy')}</p>
                           <p><span className="font-medium">Age / Gender:</span> {lab.patientAge} years / {patient?.gender || 'N/A'}</p>
-                          <p><span className="font-medium">Report Date:</span> {format(new Date(lab.reportDate), 'dd MMM yyyy')}</p>
+                          <p><span className="font-medium">Report Date:</span> {safeFormatDate(lab.reportDate, 'dd MMM yyyy')}</p>
                           <p><span className="font-medium">Patient ID:</span> {lab.patientId}</p>
                           <p><span className="font-medium">Technician:</span> {lab.technician}</p>
                         </div>
@@ -675,7 +695,7 @@ export function LabResultsPage() {
                         <div>
                           <CardTitle className="text-base">{lab.patientName}</CardTitle>
                           <p className="text-sm text-muted-foreground">
-                            {format(new Date(lab.testDate), 'MMM dd, yyyy')} • {lab.tests.length} tests
+                            {safeFormatDate(lab.testDate, 'MMM dd, yyyy')} • {lab.tests.length} tests
                           </p>
                         </div>
                         <Badge variant="outline" className="font-mono text-xs">
