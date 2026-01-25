@@ -98,6 +98,7 @@ const samplePrescriptions: Prescription[] = [
     doctorNotes: 'Rest and hydration recommended',
     precautions: 'Avoid cold drinks, follow-up after 3 days',
     generatedText: 'Patient Ahmed Khan (Age 32) diagnosed with Viral Fever. Prescribed Paracetamol 500mg twice daily for 5 days, Cough Syrup 10ml at night for 3 days. Advised blood test if fever persists. General advice: Rest and hydration recommended. Precautions: Avoid cold drinks, follow-up after 3 days.',
+    followUpDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     createdAt: new Date().toISOString(),
   },
 ];
