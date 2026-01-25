@@ -408,7 +408,8 @@ export function PrescriptionsPage() {
     doc.text('FOLLOW-UP DATE:', margin + 4, yPos + 7);
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'normal');
-    doc.text(format(new Date(rx.followUpDate), 'dd MMM yyyy'), margin + 38, yPos + 7);
+    const followUpDatePdf = rx.followUpDate ? new Date(rx.followUpDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    doc.text(isNaN(followUpDatePdf.getTime()) ? 'To be scheduled' : format(followUpDatePdf, 'dd MMM yyyy'), margin + 38, yPos + 7);
     
     // ============ FOOTER SECTION ============
     const footerY = pageHeight - 50;
@@ -826,7 +827,7 @@ export function PrescriptionsPage() {
                     
                     {/* Follow-up */}
                     <div className="mb-6 p-3 bg-muted/30 border rounded">
-                      <p className="text-sm"><span className="font-medium">Follow-up Date:</span> {format(new Date(rx.followUpDate), 'MMMM dd, yyyy')}</p>
+                      <p className="text-sm"><span className="font-medium">Follow-up Date:</span> {rx.followUpDate && !isNaN(new Date(rx.followUpDate).getTime()) ? format(new Date(rx.followUpDate), 'MMMM dd, yyyy') : 'To be scheduled'}</p>
                     </div>
                     
                     {/* Footer - Signature & Stamp */}
