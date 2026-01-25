@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useHospitalStore } from '@/store/hospitalStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Printer, Download, Search, FlaskConical, Bell, CheckCircle, Clock, Package } from 'lucide-react';
+import { Plus, Trash2, Printer, Download, Search, FlaskConical, Bell, CheckCircle, Clock, Package, Loader2, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { LabTestResult, LabResult, LabResultStatus } from '@/types/hospital';
@@ -29,7 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-
+import { supabase } from '@/integrations/supabase/client';
 // Common lab tests with normal ranges
 const commonLabTests = [
   { name: 'Hemoglobin', unit: 'g/dL', normalRange: '13.5-17.5 (M) / 12.0-15.5 (F)' },
@@ -458,13 +458,49 @@ export function LabResultsPage() {
     }
   };
 
-  const handleNotifyPatient = (lab: LabResult) => {
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
+
+  const handleNotifyPatient = useCallback(async (lab: LabResult) => {
     const patient = patients.find(p => p.id === lab.patientId);
-    if (patient) {
-      notifyPatient(lab.id);
-      toast.success(`Patient ${patient.name} notified! Phone: ${patient.phone}`);
+    if (!patient) {
+      toast.error('Patient not found');
+      return;
     }
-  };
+
+    setIsSendingNotification(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          to: patient.phone,
+          patientName: patient.name,
+          reportId: lab.id,
+          clinicName: settings.clinicName,
+        },
+      });
+
+      if (error) {
+        console.error('WhatsApp error:', error);
+        toast.error(`Failed to send WhatsApp: ${error.message}`);
+        return;
+      }
+
+      if (data?.error) {
+        console.error('WhatsApp API error:', data.error);
+        toast.error(`WhatsApp error: ${data.details || data.error}`);
+        return;
+      }
+
+      // Update status in store
+      notifyPatient(lab.id);
+      toast.success(`WhatsApp sent to ${patient.name} (${data.to})`);
+    } catch (err) {
+      console.error('Error sending notification:', err);
+      toast.error('Failed to send notification. Please try again.');
+    } finally {
+      setIsSendingNotification(false);
+    }
+  }, [patients, settings.clinicName, notifyPatient]);
 
   const handleMarkCollected = (labId: string) => {
     markAsCollected(labId);
@@ -792,16 +828,40 @@ export function LabResultsPage() {
                                   <p className="text-sm"><strong>Phone:</strong> {patients.find(p => p.id === lab.patientId)?.phone}</p>
                                   <p className="text-sm"><strong>Report ID:</strong> {lab.id}</p>
                                 </div>
-                                <div className="p-3 bg-muted rounded-lg">
-                                  <p className="text-sm">
-                                    📋 Dear {lab.patientName}, your lab report ({lab.id}) is ready for collection. Please visit the clinic with your ID. Thank you!
-                                  </p>
+                                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                  <div className="flex items-start gap-2">
+                                    <MessageCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                                    <div>
+                                      <p className="text-sm font-medium text-green-800">WhatsApp Message Preview:</p>
+                                      <p className="text-sm text-green-700 mt-1">
+                                        📋 *Lab Report Ready*<br /><br />
+                                        Dear {lab.patientName},<br /><br />
+                                        Your lab report (ID: {lab.id}) is now ready for collection.<br /><br />
+                                        Please visit *{settings.clinicName}* with your ID to collect your report.<br /><br />
+                                        Thank you for choosing us!
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                               <DialogFooter>
-                                <Button variant="default" onClick={() => handleNotifyPatient(lab)}>
-                                  <Bell className="mr-2 h-4 w-4" />
-                                  Send Notification
+                                <Button 
+                                  variant="default" 
+                                  onClick={() => handleNotifyPatient(lab)}
+                                  disabled={isSendingNotification}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  {isSendingNotification ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Sending...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <MessageCircle className="mr-2 h-4 w-4" />
+                                      Send WhatsApp
+                                    </>
+                                  )}
                                 </Button>
                               </DialogFooter>
                             </DialogContent>
