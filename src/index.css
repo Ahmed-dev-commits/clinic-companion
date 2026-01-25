@@ -4,65 +4,70 @@
 
 /* Print Styles - Only print content with .print-content class */
 @media print {
-  /* Hide everything by default */
-  body * {
-    visibility: hidden;
+  /* Hide everything except print content */
+  body > *:not(.print-content),
+  body *:not(.print-content):not(.print-content *) {
+    display: none !important;
   }
   
-  /* Show only print content and its children */
-  .print-content,
-  .print-content * {
-    visibility: visible;
-  }
-  
-  /* Position print content at top left */
+  /* Show print content */
   .print-content {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 0;
-    background: white;
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
   }
   
-  /* Hide buttons, interactive elements, and screen-only content in print */
+  .print-content * {
+    visibility: visible !important;
+  }
+  
+  /* Hide buttons and screen-only elements in print */
   .print-content button,
   .print-content .no-print,
-  .print-content .print\\:hidden {
+  .print\\:hidden,
+  [class*="print:hidden"] {
     display: none !important;
+  }
+  
+  /* Show print-only elements */
+  .hidden.print\\:block,
+  [class*="print:block"] {
+    display: block !important;
   }
   
   /* Professional print styling */
   .print-content {
-    font-family: 'Arial', 'Helvetica', sans-serif;
-    color: #000;
-    font-size: 11pt;
-    line-height: 1.4;
+    font-family: 'Arial', 'Helvetica', sans-serif !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
   }
   
   .print-content h1 {
-    font-size: 18pt;
-    font-weight: bold;
+    font-size: 18pt !important;
+    font-weight: bold !important;
   }
   
   .print-content h2 {
-    font-size: 11pt;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 11pt !important;
+    font-weight: 600 !important;
   }
   
   /* Table styling for print */
   .print-content table {
-    width: 100%;
-    border-collapse: collapse;
+    width: 100% !important;
+    border-collapse: collapse !important;
   }
   
   .print-content th,
   .print-content td {
-    border: 1px solid #333;
-    padding: 6px 8px;
-    text-align: left;
+    border: 1px solid #333 !important;
+    padding: 6px 8px !important;
+    text-align: left !important;
   }
   
   .print-content th {
@@ -77,13 +82,18 @@
     print-color-adjust: exact;
   }
   
-  /* Page settings */
+  /* Page settings - prevent blank pages */
   @page {
     size: A4;
-    margin: 15mm;
+    margin: 10mm;
   }
   
-  /* Avoid page breaks inside elements */
+  /* Prevent page breaks */
+  .print-content {
+    page-break-before: avoid;
+    page-break-after: avoid;
+  }
+  
   .print-content table,
   .print-content .border {
     page-break-inside: avoid;
