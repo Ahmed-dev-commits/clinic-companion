@@ -57,6 +57,19 @@ export interface Surgery {
   surgeryDate: string;
 }
 
+export interface MedicineEntry {
+  stockId: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+export interface FeeCollection {
+  labFee: number;
+  medicines: MedicineEntry[];
+  paymentMode: 'Cash' | 'Card';
+}
+
 export interface ServicesState {
   consultation: Consultation;
   ultrasound: Ultrasound;
@@ -65,6 +78,7 @@ export interface ServicesState {
   injection: InjectionCharge;
   retention: RetentionCharge;
   surgery: Surgery;
+  feeCollection: FeeCollection;
 }
 
 export interface PatientServices {
@@ -135,5 +149,10 @@ export const createEmptyServices = (): ServicesState => ({
     otCharges: 0,
     anesthesiaCharges: 0,
     surgeryDate: new Date().toISOString().split('T')[0],
+  },
+  feeCollection: {
+    labFee: 0,
+    medicines: [],
+    paymentMode: 'Cash',
   },
 });

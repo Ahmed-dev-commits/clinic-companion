@@ -36,6 +36,8 @@ export function ServicesSummaryDialog({
   if (services.retention.enabled) enabledServices.push('Retention');
   if (services.surgery.enabled) enabledServices.push('Surgery');
 
+  const medicineFee = services.feeCollection?.medicines?.reduce((sum, m) => sum + m.price * m.quantity, 0) || 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -70,6 +72,9 @@ export function ServicesSummaryDialog({
               ))
             ) : (
               <p className="text-muted-foreground text-sm">No services selected</p>
+            )}
+            {services.feeCollection?.medicines?.length > 0 && (
+              <Badge variant="outline">Medicines ({services.feeCollection.medicines.length})</Badge>
             )}
           </div>
         </div>
@@ -171,8 +176,41 @@ export function ServicesSummaryDialog({
                   </tr>
                 </>
               )}
+              
+              {/* Fee Collection - Lab Fee */}
+              {services.feeCollection?.labFee > 0 && (
+                <tr className="border-b">
+                  <td className="py-2">Lab Fee</td>
+                  <td className="py-2 text-muted-foreground">Laboratory Tests</td>
+                  <td className="py-2 text-right">{services.feeCollection.labFee.toLocaleString()}</td>
+                </tr>
+              )}
+              
+              {/* Fee Collection - Medicines */}
+              {services.feeCollection?.medicines?.length > 0 && (
+                <>
+                  <tr className="border-b">
+                    <td className="py-2">Medicines</td>
+                    <td className="py-2 text-muted-foreground">
+                      {services.feeCollection.medicines.length} item(s)
+                    </td>
+                    <td className="py-2 text-right">{medicineFee.toLocaleString()}</td>
+                  </tr>
+                  {services.feeCollection.medicines.map((m) => (
+                    <tr key={m.stockId} className="border-b">
+                      <td className="py-1 pl-4 text-muted-foreground">- {m.name}</td>
+                      <td className="py-1 text-muted-foreground">× {m.quantity} @ Rs. {m.price}</td>
+                      <td className="py-1 text-right">{(m.price * m.quantity).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </>
+              )}
             </tbody>
             <tfoot>
+              <tr className="border-t">
+                <td className="py-2 text-muted-foreground" colSpan={2}>Payment Mode</td>
+                <td className="py-2 text-right">{services.feeCollection?.paymentMode || 'Cash'}</td>
+              </tr>
               <tr className="font-bold text-lg">
                 <td className="py-3" colSpan={2}>Grand Total</td>
                 <td className="py-3 text-right text-primary">Rs. {grandTotal.toLocaleString()}</td>
