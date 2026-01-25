@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useHospitalStore } from '@/store/hospitalStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useSmsNotificationStore } from '@/store/smsNotificationStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Printer, Download, Search, FlaskConical, Bell, CheckCircle, Clock, Package, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Printer, Download, Search, FlaskConical, Bell, CheckCircle, Clock, Package, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { LabTestResult, LabResult, LabResultStatus } from '@/types/hospital';
@@ -29,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { SmsNotificationPanel } from '@/components/SmsNotificationPanel';
 
 // Common lab tests with normal ranges
 const commonLabTests = [
@@ -459,6 +461,7 @@ export function LabResultsPage() {
   };
 
   const [isSendingNotification, setIsSendingNotification] = useState(false);
+  const { addNotification, updateStatus } = useSmsNotificationStore();
 
   const handleNotifyPatient = useCallback(async (lab: LabResult) => {
     const patient = patients.find(p => p.id === lab.patientId);
@@ -474,26 +477,55 @@ export function LabResultsPage() {
 
     setIsSendingNotification(true);
 
-    try {
-      // Mock SMS - simulates sending without external service
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Log the mock message for debugging
-      console.log('📱 Mock SMS sent:', {
-        to: patient.phone,
-        message: `Lab Report Ready: Dear ${patient.name}, your lab report (ID: ${lab.id}) is ready for collection at ${settings.clinicName || 'our clinic'}.`,
-      });
+    const message = `Lab Report Ready: Dear ${patient.name}, your lab report (ID: ${lab.id}) is ready for collection at ${settings.clinicName || 'our clinic'}.`;
 
-      // Update status in store
-      notifyPatient(lab.id);
-      toast.success(`SMS notification sent to ${patient.name} (${patient.phone})`);
+    // Add notification to store with 'queued' status
+    const smsId = addNotification({
+      to: patient.phone,
+      patientName: patient.name,
+      message,
+      status: 'queued',
+      labResultId: lab.id,
+    });
+
+    // Simulate real-time status updates
+    try {
+      // Step 1: Queued → Sending (after 500ms)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      updateStatus(smsId, 'sending');
+      
+      // Step 2: Sending → Delivered (after 1500ms)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate 90% success rate
+      const isSuccess = Math.random() > 0.1;
+      
+      if (isSuccess) {
+        updateStatus(smsId, 'delivered');
+        
+        // Log the mock message for debugging
+        console.log('📱 Mock SMS delivered:', {
+          id: smsId,
+          to: patient.phone,
+          message,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Update lab result status
+        notifyPatient(lab.id);
+        toast.success(`SMS delivered to ${patient.name}`);
+      } else {
+        updateStatus(smsId, 'failed');
+        toast.error('SMS delivery failed. Please try again.');
+      }
     } catch (err) {
       console.error('Error sending notification:', err);
+      updateStatus(smsId, 'failed');
       toast.error('Failed to send notification. Please try again.');
     } finally {
       setIsSendingNotification(false);
     }
-  }, [patients, settings.clinicName, notifyPatient]);
+  }, [patients, settings.clinicName, notifyPatient, addNotification, updateStatus]);
 
   const handleMarkCollected = (labId: string) => {
     markAsCollected(labId);
@@ -502,10 +534,13 @@ export function LabResultsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Lab Results"
-        description="Record and manage laboratory test results"
-      />
+      <div className="flex items-center justify-between mb-6">
+        <PageHeader
+          title="Lab Results"
+          description="Record and manage laboratory test results"
+        />
+        <SmsNotificationPanel />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Lab Result Form */}
