@@ -28,20 +28,25 @@
     z-index: 9999;
   }
   
-  /* Hide buttons and screen-only elements in print */
-  .print-content button,
-  .print-content .no-print,
-  .print\\:hidden,
-  [class*="print:hidden"] {
+  /* Hide screen layout sections completely in print */
+  .print-content .print\:hidden {
     display: none !important;
     visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
   }
   
-  /* Show print-only elements */
-  .hidden.print\\:block,
-  [class*="print:block"] {
+  /* Show print-only layout sections */
+  .print-content .hidden.print\:block {
     display: block !important;
     visibility: visible !important;
+    height: auto !important;
+  }
+  
+  /* Hide buttons and controls in print */
+  .print-content button {
+    display: none !important;
+    visibility: hidden !important;
   }
   
   /* Professional print styling */
