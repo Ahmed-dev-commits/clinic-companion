@@ -1,4 +1,4 @@
-import React, { useState, useMemo, forwardRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,10 @@ import {
   Loader2,
   Save,
   FileText,
+  Plus,
+  Trash2,
+  CreditCard,
+  Pill,
 } from 'lucide-react';
 import { 
   createEmptyServices, 
@@ -32,8 +36,11 @@ import {
   UltrasoundType, 
   ECGType, 
   InjectionType, 
-  SurgeryType 
+  SurgeryType,
+  MedicineEntry,
 } from '@/types/services';
+import { useHospitalStore } from '@/store/hospitalStore';
+import { toast } from 'sonner';
 
 interface AdditionalServicesPanelProps {
   patientId: string;
@@ -43,12 +50,24 @@ interface AdditionalServicesPanelProps {
   isSubmitting?: boolean;
 }
 
-export const AdditionalServicesPanel = forwardRef<HTMLDivElement, AdditionalServicesPanelProps>(
-  function AdditionalServicesPanel(
-    { patientId, patientName, onSave, onViewSummary, isSubmitting = false },
-    ref
-  ) {
+export function AdditionalServicesPanel({
+  patientId,
+  patientName,
+  onSave,
+  onViewSummary,
+  isSubmitting = false,
+}: AdditionalServicesPanelProps) {
   const [services, setServices] = useState<ServicesState>(createEmptyServices);
+  const { stock, reduceStock, addPayment } = useHospitalStore();
+  
+  // Medicine selection state
+  const [selectedStockId, setSelectedStockId] = useState('');
+  const [medicineQuantity, setMedicineQuantity] = useState('1');
+
+  // Calculate medicine total
+  const medicineFee = useMemo(() => {
+    return services.feeCollection.medicines.reduce((sum, m) => sum + m.price * m.quantity, 0);
+  }, [services.feeCollection.medicines]);
 
   // Calculate running total
   const grandTotal = useMemo(() => {
@@ -63,8 +82,11 @@ export const AdditionalServicesPanel = forwardRef<HTMLDivElement, AdditionalServ
       total += services.surgery.otCharges;
       total += services.surgery.anesthesiaCharges;
     }
+    // Add fee collection
+    total += services.feeCollection.labFee;
+    total += medicineFee;
     return total;
-  }, [services]);
+  }, [services, medicineFee]);
 
   const updateConsultation = (updates: Partial<ServicesState['consultation']>) => {
     setServices(prev => ({
@@ -115,7 +137,79 @@ export const AdditionalServicesPanel = forwardRef<HTMLDivElement, AdditionalServ
     }));
   };
 
+  const updateFeeCollection = (updates: Partial<ServicesState['feeCollection']>) => {
+    setServices(prev => ({
+      ...prev,
+      feeCollection: { ...prev.feeCollection, ...updates },
+    }));
+  };
+
+  const handleAddMedicine = () => {
+    if (!selectedStockId) {
+      toast.error('Please select a medicine');
+      return;
+    }
+
+    const stockItem = stock.find(s => s.id === selectedStockId);
+    if (!stockItem) return;
+
+    const qty = parseInt(medicineQuantity) || 1;
+    if (qty > stockItem.quantity) {
+      toast.error(`Only ${stockItem.quantity} units available`);
+      return;
+    }
+
+    const currentMedicines = services.feeCollection.medicines;
+    const existingIndex = currentMedicines.findIndex(m => m.stockId === selectedStockId);
+    
+    if (existingIndex >= 0) {
+      const newQty = currentMedicines[existingIndex].quantity + qty;
+      if (newQty > stockItem.quantity) {
+        toast.error(`Only ${stockItem.quantity} units available`);
+        return;
+      }
+      const newMedicines = [...currentMedicines];
+      newMedicines[existingIndex].quantity = newQty;
+      updateFeeCollection({ medicines: newMedicines });
+    } else {
+      updateFeeCollection({
+        medicines: [
+          ...currentMedicines,
+          { stockId: selectedStockId, name: stockItem.name, quantity: qty, price: stockItem.price },
+        ],
+      });
+    }
+
+    setSelectedStockId('');
+    setMedicineQuantity('1');
+  };
+
+  const handleRemoveMedicine = (stockId: string) => {
+    updateFeeCollection({
+      medicines: services.feeCollection.medicines.filter(m => m.stockId !== stockId),
+    });
+  };
+
   const handleSave = async () => {
+    // Reduce stock for medicines
+    services.feeCollection.medicines.forEach(m => {
+      reduceStock(m.stockId, m.quantity);
+    });
+
+    // Create payment record if there are fees
+    if (grandTotal > 0) {
+      addPayment({
+        patientId,
+        patientName,
+        consultationFee: services.consultation.enabled ? services.consultation.fee : 0,
+        labFee: services.feeCollection.labFee,
+        medicineFee,
+        totalAmount: grandTotal,
+        paymentMode: services.feeCollection.paymentMode,
+        medicines: services.feeCollection.medicines,
+      });
+    }
+
     await onSave(services, grandTotal);
   };
 
@@ -124,7 +218,7 @@ export const AdditionalServicesPanel = forwardRef<HTMLDivElement, AdditionalServ
       {/* Header with Patient Info and Running Total */}
       <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg">
         <div>
-          <h3 className="font-semibold">Additional Services</h3>
+          <h3 className="font-semibold">Services & Fee Collection</h3>
           <p className="text-sm text-muted-foreground">
             Patient: {patientName} ({patientId})
           </p>
@@ -538,6 +632,140 @@ export const AdditionalServicesPanel = forwardRef<HTMLDivElement, AdditionalServ
             </CardContent>
           )}
         </Card>
+
+        {/* 8. Fee Collection - Always visible */}
+        <Card className="md:col-span-2 ring-2 ring-green-500">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CreditCard className="h-4 w-4" />
+                Fee Collection
+              </CardTitle>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                Required
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Lab Fee (Rs.)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={services.feeCollection.labFee || ''}
+                  onChange={(e) => updateFeeCollection({ labFee: parseFloat(e.target.value) || 0 })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label>Payment Mode</Label>
+                <Select
+                  value={services.feeCollection.paymentMode}
+                  onValueChange={(value: 'Cash' | 'Card') => updateFeeCollection({ paymentMode: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Cash">Cash</SelectItem>
+                    <SelectItem value="Card">Card</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Add Medicine */}
+            <div className="border-t pt-4">
+              <Label className="mb-2 flex items-center gap-2">
+                <Pill className="h-4 w-4" />
+                Add Medicines from Stock
+              </Label>
+              <div className="flex gap-2">
+                <Select value={selectedStockId} onValueChange={setSelectedStockId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select medicine" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stock.filter(s => s.quantity > 0).map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.name} (Rs. {item.price}) - {item.quantity} left
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  min="1"
+                  value={medicineQuantity}
+                  onChange={(e) => setMedicineQuantity(e.target.value)}
+                  className="w-20"
+                  placeholder="Qty"
+                />
+                <Button type="button" variant="secondary" onClick={handleAddMedicine}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Selected Medicines */}
+            {services.feeCollection.medicines.length > 0 && (
+              <div className="space-y-2">
+                <Label>Selected Medicines</Label>
+                {services.feeCollection.medicines.map((m) => (
+                  <div
+                    key={m.stockId}
+                    className="flex items-center justify-between p-2 rounded bg-muted"
+                  >
+                    <span className="text-sm">
+                      {m.name} × {m.quantity}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Rs. {m.price * m.quantity}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive"
+                        onClick={() => handleRemoveMedicine(m.stockId)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <div className="text-right text-sm font-medium">
+                  Medicine Total: Rs. {medicineFee.toLocaleString()}
+                </div>
+              </div>
+            )}
+
+            {/* Fee Breakdown */}
+            <div className="border-t pt-4 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Consultation:</span>
+                <span>Rs. {services.consultation.enabled ? services.consultation.fee : 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Lab Fee:</span>
+                <span>Rs. {services.feeCollection.labFee}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Medicines:</span>
+                <span>Rs. {medicineFee}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Other Services:</span>
+                <span>Rs. {(
+                  (services.ultrasound.enabled ? services.ultrasound.charges : 0) +
+                  (services.ecg.enabled ? services.ecg.charges : 0) +
+                  (services.injection.enabled ? services.injection.charges * services.injection.quantity : 0) +
+                  (services.retention.enabled ? services.retention.charges : 0) +
+                  (services.surgery.enabled ? services.surgery.operationCharges + services.surgery.otCharges + services.surgery.anesthesiaCharges : 0)
+                ).toLocaleString()}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Summary Footer */}
@@ -555,11 +783,10 @@ export const AdditionalServicesPanel = forwardRef<HTMLDivElement, AdditionalServ
           <Button onClick={handleSave} disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />
-            Save Services
+            Save & Record Payment
           </Button>
         </div>
       </div>
     </div>
   );
-});
-
+}
