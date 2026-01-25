@@ -62,3 +62,24 @@ export interface PrescriptionMedicine {
   frequency: string;
   duration: string;
 }
+
+export interface LabTestResult {
+  name: string;
+  value: string;
+  unit: string;
+  normalRange: string;
+  status: 'Normal' | 'High' | 'Low' | 'Critical';
+}
+
+export interface LabResult {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientAge: number;
+  testDate: string;
+  reportDate: string;
+  tests: LabTestResult[];
+  notes: string;
+  technician: string;
+  createdAt: string;
+}
