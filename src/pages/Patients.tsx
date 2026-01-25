@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useHospitalStore } from '@/store/hospitalStore';
+import { useAccessPatients } from '@/hooks/useAccessPatients';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,18 +28,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, Edit, Trash2, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Patient } from '@/types/hospital';
 import { format } from 'date-fns';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 
 export function PatientsPage() {
-  const { patients, addPatient, updatePatient, deletePatient } = useHospitalStore();
+  const { patients, loading, error, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('all');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -88,7 +90,7 @@ export function PatientsPage() {
     resetForm();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
@@ -107,21 +109,31 @@ export function PatientsPage() {
       symptoms: formData.symptoms.trim(),
     };
 
-    if (editingPatient) {
-      updatePatient(editingPatient.id, patientData);
-      toast.success('Patient updated successfully');
-    } else {
-      const id = addPatient(patientData);
-      toast.success(`Patient registered with ID: ${id}`);
+    setIsSubmitting(true);
+    try {
+      if (editingPatient) {
+        await updatePatient(editingPatient.id, patientData);
+        toast.success('Patient updated successfully');
+      } else {
+        const id = await addPatient(patientData);
+        toast.success(`Patient registered with ID: ${id}`);
+      }
+      handleCloseDialog();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Operation failed');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    handleCloseDialog();
   };
 
-  const handleDelete = (patient: Patient) => {
+  const handleDelete = async (patient: Patient) => {
     if (confirm(`Are you sure you want to delete ${patient.name}?`)) {
-      deletePatient(patient.id);
-      toast.success('Patient deleted successfully');
+      try {
+        await deletePatient(patient.id);
+        toast.success('Patient deleted successfully');
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to delete patient');
+      }
     }
   };
 
@@ -143,12 +155,26 @@ export function PatientsPage() {
         title="Patient Registration"
         description="Manage patient records and registrations"
         action={
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Patient
-          </Button>
+          <div className="flex items-center gap-3">
+            <ConnectionStatus />
+            <Button variant="outline" size="icon" onClick={refetch} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Patient
+            </Button>
+          </div>
         }
       />
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg mb-4">
+          <strong>Connection Error:</strong> {error}
+          <p className="text-sm mt-1">Make sure the backend server is running on localhost:3001</p>
+        </div>
+      )}
 
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -176,58 +202,65 @@ export function PatientsPage() {
 
       {/* Patients Table */}
       <div className="table-container">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Patient ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Age</TableHead>
-              <TableHead>Gender</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Visit Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredPatients.length === 0 ? (
+        {loading && patients.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading patients...</span>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  No patients found
-                </TableCell>
+                <TableHead>Patient ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Age</TableHead>
+                <TableHead>Gender</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Visit Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              filteredPatients.map((patient) => (
-                <TableRow key={patient.id}>
-                  <TableCell className="font-mono text-sm">{patient.id}</TableCell>
-                  <TableCell className="font-medium">{patient.name}</TableCell>
-                  <TableCell>{patient.age}</TableCell>
-                  <TableCell>{patient.gender}</TableCell>
-                  <TableCell>{patient.phone}</TableCell>
-                  <TableCell>{format(new Date(patient.visitDate), 'MMM dd, yyyy')}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenDialog(patient)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(patient)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {filteredPatients.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    {error ? 'Unable to load patients' : 'No patients found'}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredPatients.map((patient) => (
+                  <TableRow key={patient.id}>
+                    <TableCell className="font-mono text-sm">{patient.id}</TableCell>
+                    <TableCell className="font-medium">{patient.name}</TableCell>
+                    <TableCell>{patient.age}</TableCell>
+                    <TableCell>{patient.gender}</TableCell>
+                    <TableCell>{patient.phone}</TableCell>
+                    <TableCell>{format(new Date(patient.visitDate), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenDialog(patient)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(patient)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       {/* Add/Edit Patient Dialog */}
@@ -331,10 +364,11 @@ export function PatientsPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+              <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingPatient ? 'Update' : 'Register'}
               </Button>
             </DialogFooter>
