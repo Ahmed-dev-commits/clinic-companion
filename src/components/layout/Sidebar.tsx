@@ -8,6 +8,7 @@ import {
   Activity,
   Menu,
   X,
+  FlaskConical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -20,6 +21,7 @@ const navItems = [
   { path: '/fees', label: 'Fee Collection', icon: CreditCard },
   { path: '/stock', label: 'Stock', icon: Package },
   { path: '/prescriptions', label: 'Prescriptions', icon: FileText },
+  { path: '/lab-results', label: 'Lab Results', icon: FlaskConical },
 ];
 
 export function Sidebar() {

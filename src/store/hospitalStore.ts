@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Patient, Payment, StockItem, Prescription } from '@/types/hospital';
+import { Patient, Payment, StockItem, Prescription, LabResult } from '@/types/hospital';
 
 // Helper to generate unique IDs
 const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -102,12 +102,32 @@ const samplePrescriptions: Prescription[] = [
   },
 ];
 
+const sampleLabResults: LabResult[] = [
+  {
+    id: 'LAB-001',
+    patientId: 'PAT-001',
+    patientName: 'Ahmed Khan',
+    patientAge: 32,
+    testDate: new Date().toISOString().split('T')[0],
+    reportDate: new Date().toISOString().split('T')[0],
+    tests: [
+      { name: 'Hemoglobin', value: '14.5', unit: 'g/dL', normalRange: '13.5-17.5', status: 'Normal' },
+      { name: 'Blood Sugar (Fasting)', value: '95', unit: 'mg/dL', normalRange: '70-100', status: 'Normal' },
+      { name: 'Total Cholesterol', value: '220', unit: 'mg/dL', normalRange: '<200', status: 'High' },
+    ],
+    notes: 'Slightly elevated cholesterol. Recommend dietary changes.',
+    technician: 'Lab Tech - Asif',
+    createdAt: new Date().toISOString(),
+  },
+];
+
 interface HospitalStore {
   // Data
   patients: Patient[];
   payments: Payment[];
   stock: StockItem[];
   prescriptions: Prescription[];
+  labResults: LabResult[];
 
   // Patient actions
   addPatient: (patient: Omit<Patient, 'id' | 'createdAt'>) => string;
@@ -126,6 +146,9 @@ interface HospitalStore {
   // Prescription actions
   addPrescription: (prescription: Omit<Prescription, 'id' | 'createdAt'>) => string;
 
+  // Lab Result actions
+  addLabResult: (labResult: Omit<LabResult, 'id' | 'createdAt'>) => string;
+
   // Getters
   getPatientById: (id: string) => Patient | undefined;
   getLowStockItems: () => StockItem[];
@@ -141,6 +164,7 @@ export const useHospitalStore = create<HospitalStore>()(
       payments: samplePayments,
       stock: sampleStock,
       prescriptions: samplePrescriptions,
+      labResults: sampleLabResults,
 
       // Patient actions
       addPatient: (patient) => {
@@ -223,6 +247,18 @@ export const useHospitalStore = create<HospitalStore>()(
           createdAt: new Date().toISOString(),
         };
         set((state) => ({ prescriptions: [...state.prescriptions, newPrescription] }));
+        return id;
+      },
+
+      // Lab Result actions
+      addLabResult: (labResult) => {
+        const id = generateId('LAB');
+        const newLabResult: LabResult = {
+          ...labResult,
+          id,
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({ labResults: [...state.labResults, newLabResult] }));
         return id;
       },
 
