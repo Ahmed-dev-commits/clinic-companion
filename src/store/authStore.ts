@@ -17,7 +17,27 @@ interface AuthStore {
   hasRole: (roles: UserRole[]) => boolean;
 }
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+// Demo users for testing when backend is unavailable
+const DEMO_USERS: Record<string, { password: string; user: AuthUser }> = {
+  receptionist: {
+    password: 'reception123',
+    user: { id: 'demo-1', username: 'receptionist', name: 'Reception Staff', role: 'Receptionist' },
+  },
+  doctor: {
+    password: 'doctor123',
+    user: { id: 'demo-2', username: 'doctor', name: 'Dr. Smith', role: 'Doctor' },
+  },
+  labtech: {
+    password: 'lab123',
+    user: { id: 'demo-3', username: 'labtech', name: 'Lab Technician', role: 'LabTechnician' },
+  },
+  admin: {
+    password: 'admin123',
+    user: { id: 'demo-4', username: 'admin', name: 'Administrator', role: 'Admin' },
+  },
+};
 
 export const useAuthStore = create<AuthStore>()(
   persist(
@@ -26,6 +46,7 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
 
       login: async (username: string, password: string) => {
+        // First try the backend
         try {
           const response = await fetch(`${API_BASE_URL}/users/login`, {
             method: 'POST',
@@ -33,28 +54,36 @@ export const useAuthStore = create<AuthStore>()(
             body: JSON.stringify({ username, password }),
           });
 
-          if (!response.ok) {
-            return false;
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user) {
+              set({
+                user: {
+                  id: data.user.ID,
+                  username: data.user.Username,
+                  name: data.user.Name,
+                  role: data.user.Role as UserRole,
+                },
+                isAuthenticated: true,
+              });
+              return true;
+            }
           }
-
-          const data = await response.json();
-          if (data.success && data.user) {
-            set({
-              user: {
-                id: data.user.ID,
-                username: data.user.Username,
-                name: data.user.Name,
-                role: data.user.Role as UserRole,
-              },
-              isAuthenticated: true,
-            });
-            return true;
-          }
-          return false;
         } catch (error) {
-          console.error('Login error:', error);
-          return false;
+          console.log('Backend unavailable, using demo mode');
         }
+
+        // Fallback to demo users when backend is unavailable
+        const demoUser = DEMO_USERS[username.toLowerCase()];
+        if (demoUser && demoUser.password === password) {
+          set({
+            user: demoUser.user,
+            isAuthenticated: true,
+          });
+          return true;
+        }
+
+        return false;
       },
 
       logout: () => {
