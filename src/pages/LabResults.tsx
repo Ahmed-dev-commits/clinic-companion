@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useHospitalStore } from '@/store/hospitalStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +48,7 @@ const commonLabTests = [
 
 export function LabResultsPage() {
   const { patients, labResults, addLabResult } = useHospitalStore();
+  const { settings } = useSettingsStore();
   
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
@@ -161,23 +163,38 @@ export function LabResultsPage() {
     const patient = patients.find(p => p.id === lab.patientId);
     
     // ============ HEADER ============
-    doc.setFillColor(...primaryColor);
-    doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
+    // Logo
+    if (settings.logo) {
+      try {
+        doc.addImage(settings.logo, 'PNG', margin, 10, 25, 25);
+      } catch {
+        doc.setFillColor(...primaryColor);
+        doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
+      }
+    } else {
+      doc.setFillColor(...primaryColor);
+      doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
+    }
     
     doc.setTextColor(...primaryColor);
     doc.setFontSize(18);
-    doc.text('MediCare Hospital', margin + 30, 18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(settings.clinicName, margin + 30, 18);
     
     doc.setTextColor(...mutedColor);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text('123 Healthcare Avenue, Medical District', margin + 30, 24);
-    doc.text('City, State - 400001', margin + 30, 29);
-    doc.text('Phone: +91 98765 43210 | Email: care@medicare.com', margin + 30, 34);
+    doc.text(settings.address, margin + 30, 24);
+    doc.text(settings.city, margin + 30, 29);
+    doc.text(`Phone: ${settings.phone} | Email: ${settings.email}`, margin + 30, 34);
     
     // Right side - Lab Report title
     doc.setTextColor(...primaryColor);
@@ -549,14 +566,18 @@ export function LabResultsPage() {
                       {/* Header */}
                       <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-4">
                         <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                            LOGO
-                          </div>
+                          {settings.logo ? (
+                            <img src={settings.logo} alt="Clinic Logo" className="w-16 h-16 object-contain rounded-lg" />
+                          ) : (
+                            <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                              LOGO
+                            </div>
+                          )}
                           <div>
-                            <h1 className="text-2xl font-bold text-primary">MediCare Hospital</h1>
-                            <p className="text-sm text-muted-foreground">123 Healthcare Avenue, Medical District</p>
-                            <p className="text-sm text-muted-foreground">City, State - 400001</p>
-                            <p className="text-sm text-muted-foreground">Phone: +91 98765 43210</p>
+                            <h1 className="text-2xl font-bold text-primary">{settings.clinicName}</h1>
+                            <p className="text-sm text-muted-foreground">{settings.address}</p>
+                            <p className="text-sm text-muted-foreground">{settings.city}</p>
+                            <p className="text-sm text-muted-foreground">Phone: {settings.phone}</p>
                           </div>
                         </div>
                         <div className="text-right">

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useHospitalStore } from '@/store/hospitalStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import jsPDF from 'jspdf';
 
 export function PrescriptionsPage() {
   const { patients, prescriptions, stock, addPrescription, reduceStock } = useHospitalStore();
+  const { settings } = useSettingsStore();
   
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
@@ -162,38 +164,51 @@ export function PrescriptionsPage() {
     const patient = patients.find(p => p.id === rx.patientId);
     
     // ============ HEADER SECTION ============
-    // Logo placeholder (blue square)
-    doc.setFillColor(...primaryColor);
-    doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
+    // Logo
+    if (settings.logo) {
+      try {
+        doc.addImage(settings.logo, 'PNG', margin, 10, 25, 25);
+      } catch {
+        doc.setFillColor(...primaryColor);
+        doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
+      }
+    } else {
+      doc.setFillColor(...primaryColor);
+      doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
+    }
     
     // Clinic Info
     doc.setTextColor(...primaryColor);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('MediCare Hospital', margin + 30, 18);
+    doc.text(settings.clinicName, margin + 30, 18);
     
     doc.setTextColor(...mutedColor);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text('123 Healthcare Avenue, Medical District', margin + 30, 24);
-    doc.text('City, State - 400001', margin + 30, 29);
-    doc.text('Phone: +91 98765 43210 | Email: care@medicare.com', margin + 30, 34);
+    doc.text(settings.address, margin + 30, 24);
+    doc.text(settings.city, margin + 30, 29);
+    doc.text(`Phone: ${settings.phone} | Email: ${settings.email}`, margin + 30, 34);
     
     // Doctor Info (right side)
     doc.setTextColor(...textColor);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Dr. Rajesh Kumar', pageWidth - margin, 18, { align: 'right' });
+    doc.text(settings.doctorName, pageWidth - margin, 18, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...mutedColor);
-    doc.text('MBBS, MD (General Medicine)', pageWidth - margin, 23, { align: 'right' });
-    doc.text('Reg. No: MCI-12345-2020', pageWidth - margin, 28, { align: 'right' });
-    doc.text('Consultation Hours: 10 AM - 6 PM', pageWidth - margin, 33, { align: 'right' });
+    doc.text(settings.doctorQualification, pageWidth - margin, 23, { align: 'right' });
+    doc.text(`Reg. No: ${settings.doctorRegNo}`, pageWidth - margin, 28, { align: 'right' });
+    doc.text(`Consultation Hours: ${settings.consultationHours}`, pageWidth - margin, 33, { align: 'right' });
     
     // Header line
     doc.setDrawColor(...primaryColor);
@@ -408,7 +423,7 @@ export function PrescriptionsPage() {
     doc.line(margin + 5, footerY + 18, margin + 55, footerY + 18);
     doc.setFontSize(8);
     doc.setTextColor(...textColor);
-    doc.text('Dr. Rajesh Kumar', margin + 30, footerY + 22, { align: 'center' });
+    doc.text(settings.doctorName, margin + 30, footerY + 22, { align: 'center' });
     
     // Clinic stamp
     doc.setLineWidth(0.3);
@@ -422,7 +437,8 @@ export function PrescriptionsPage() {
     doc.setTextColor(...primaryColor);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('MediCare', pageWidth - margin - 30, footerY + 14, { align: 'center' });
+    const clinicShortName = settings.clinicName.split(' ')[0];
+    doc.text(clinicShortName, pageWidth - margin - 30, footerY + 14, { align: 'center' });
     doc.setFontSize(6);
     doc.text('HOSPITAL', pageWidth - margin - 30, footerY + 19, { align: 'center' });
     
@@ -702,22 +718,26 @@ export function PrescriptionsPage() {
                     {/* Header with Logo and Clinic Info */}
                     <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-4">
                       <div className="flex items-start gap-4">
-                        {/* Logo Placeholder */}
-                        <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                          LOGO
-                        </div>
+                        {/* Logo */}
+                        {settings.logo ? (
+                          <img src={settings.logo} alt="Clinic Logo" className="w-16 h-16 object-contain rounded-lg" />
+                        ) : (
+                          <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                            LOGO
+                          </div>
+                        )}
                         <div>
-                          <h1 className="text-2xl font-bold text-primary">MediCare Hospital</h1>
-                          <p className="text-sm text-muted-foreground">123 Healthcare Avenue, Medical District</p>
-                          <p className="text-sm text-muted-foreground">City, State - 400001</p>
-                          <p className="text-sm text-muted-foreground">Phone: +91 98765 43210 | Email: care@medicare.com</p>
+                          <h1 className="text-2xl font-bold text-primary">{settings.clinicName}</h1>
+                          <p className="text-sm text-muted-foreground">{settings.address}</p>
+                          <p className="text-sm text-muted-foreground">{settings.city}</p>
+                          <p className="text-sm text-muted-foreground">Phone: {settings.phone} | Email: {settings.email}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold">Dr. Rajesh Kumar</p>
-                        <p className="text-sm text-muted-foreground">MBBS, MD (General Medicine)</p>
-                        <p className="text-sm text-muted-foreground">Reg. No: MCI-12345-2020</p>
-                        <p className="text-sm text-muted-foreground">Consultation: 10 AM - 6 PM</p>
+                        <p className="font-bold">{settings.doctorName}</p>
+                        <p className="text-sm text-muted-foreground">{settings.doctorQualification}</p>
+                        <p className="text-sm text-muted-foreground">Reg. No: {settings.doctorRegNo}</p>
+                        <p className="text-sm text-muted-foreground">Consultation: {settings.consultationHours}</p>
                       </div>
                     </div>
                     
@@ -808,7 +828,7 @@ export function PrescriptionsPage() {
                       <div className="text-center">
                         <div className="w-40 border-b border-black mb-1 h-12"></div>
                         <p className="text-sm font-medium">Doctor's Signature</p>
-                        <p className="text-xs text-muted-foreground">Dr. Rajesh Kumar</p>
+                        <p className="text-xs text-muted-foreground">{settings.doctorName}</p>
                       </div>
                     </div>
                     
@@ -818,7 +838,7 @@ export function PrescriptionsPage() {
                         This prescription is valid for 7 days. Please consult your doctor before taking any medicine.
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        This is a computer-generated e-prescription from MediCare Hospital.
+                        This is a computer-generated e-prescription from {settings.clinicName}.
                       </p>
                     </div>
                   </div>

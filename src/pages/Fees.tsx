@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useHospitalStore } from '@/store/hospitalStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +55,7 @@ const numberToWords = (num: number): string => {
 
 export function FeesPage() {
   const { patients, payments, stock, addPayment, reduceStock } = useHospitalStore();
+  const { settings } = useSettingsStore();
   
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [consultationFee, setConsultationFee] = useState('500');
@@ -326,7 +328,7 @@ export function FeesPage() {
               <CardContent className="print:hidden">
                 <div className="receipt-container">
                   <div className="text-center mb-4">
-                    <h3 className="font-bold text-lg">MediCare Hospital</h3>
+                    <h3 className="font-bold text-lg">{settings.clinicName}</h3>
                     <p className="text-xs">Payment Receipt</p>
                   </div>
                   
@@ -358,7 +360,7 @@ export function FeesPage() {
                     <p>Paid via: {lastPayment.paymentMode}</p>
                   </div>
                   
-                  <p className="text-center text-xs mt-4">Thank you for choosing MediCare!</p>
+                  <p className="text-center text-xs mt-4">Thank you for choosing {settings.clinicName}!</p>
                 </div>
               </CardContent>
 
@@ -367,15 +369,19 @@ export function FeesPage() {
                 {/* Header with Logo and Clinic Info */}
                 <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-4">
                   <div className="flex items-start gap-4">
-                    {/* Logo Placeholder */}
-                    <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                      LOGO
-                    </div>
+                    {/* Logo */}
+                    {settings.logo ? (
+                      <img src={settings.logo} alt="Clinic Logo" className="w-16 h-16 object-contain rounded-lg" />
+                    ) : (
+                      <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                        LOGO
+                      </div>
+                    )}
                     <div>
-                      <h1 className="text-2xl font-bold text-primary">MediCare Hospital</h1>
-                      <p className="text-sm text-muted-foreground">123 Healthcare Avenue, Medical District</p>
-                      <p className="text-sm text-muted-foreground">City, State - 400001</p>
-                      <p className="text-sm text-muted-foreground">Phone: +91 98765 43210 | Email: care@medicare.com</p>
+                      <h1 className="text-2xl font-bold text-primary">{settings.clinicName}</h1>
+                      <p className="text-sm text-muted-foreground">{settings.address}</p>
+                      <p className="text-sm text-muted-foreground">{settings.city}</p>
+                      <p className="text-sm text-muted-foreground">Phone: {settings.phone} | Email: {settings.email}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -505,15 +511,15 @@ export function FeesPage() {
                     <div className="border-2 border-dashed border-muted-foreground/30 h-20 mb-2 flex items-center justify-center">
                       <span className="text-muted-foreground text-sm">Authorized Signature & Stamp</span>
                     </div>
-                    <p className="text-sm font-medium">For MediCare Hospital</p>
+                    <p className="text-sm font-medium">For {settings.clinicName}</p>
                   </div>
                 </div>
 
                 {/* Footer */}
                 <div className="border-t pt-4 text-center text-xs text-muted-foreground">
-                  <p className="font-medium mb-1">Thank you for choosing MediCare Hospital!</p>
+                  <p className="font-medium mb-1">Thank you for choosing {settings.clinicName}!</p>
                   <p>This is a computer-generated receipt and is valid without signature.</p>
-                  <p className="mt-1">For any queries, please contact: +91 98765 43210 | care@medicare.com</p>
+                  <p className="mt-1">For any queries, please contact: {settings.phone} | {settings.email}</p>
                 </div>
               </div>
             </Card>
