@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Printer, RefreshCw, FileText, CreditCard, CalendarIcon, X } from 'lucide-react';
-import { format, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ServicesState, PatientServices } from '@/types/services';
 import { Payment } from '@/types/hospital';
@@ -59,6 +59,10 @@ export function FeesPage() {
     switch (value) {
       case 'today':
         setStartDate(startOfDay(today));
+        setEndDate(endOfDay(today));
+        break;
+      case 'last7days':
+        setStartDate(startOfDay(subDays(today, 6)));
         setEndDate(endOfDay(today));
         break;
       case 'week':
@@ -184,6 +188,9 @@ export function FeesPage() {
               <ToggleGroup type="single" value={quickFilter} onValueChange={handleQuickFilter}>
                 <ToggleGroupItem value="today" aria-label="Today" className="text-xs px-3">
                   Today
+                </ToggleGroupItem>
+                <ToggleGroupItem value="last7days" aria-label="Last 7 Days" className="text-xs px-3">
+                  Last 7 Days
                 </ToggleGroupItem>
                 <ToggleGroupItem value="week" aria-label="This Week" className="text-xs px-3">
                   This Week
