@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useHospitalStore } from '@/store/hospitalStore';
+import { useAccessPatients } from '@/hooks/useAccessPatients';
+import { usePrescriptions } from '@/hooks/usePrescriptions';
+import { useStock } from '@/hooks/useStock';
 import { useSettingsStore } from '@/store/settingsStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -15,14 +17,17 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Copy, Printer, Download, FileText, Search } from 'lucide-react';
+import { Plus, Trash2, Copy, Printer, Download, FileText, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { PrescriptionMedicine, Prescription } from '@/types/hospital';
 import jsPDF from 'jspdf';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 
 export function PrescriptionsPage() {
-  const { patients, prescriptions, stock, addPrescription, reduceStock } = useHospitalStore();
+  const { patients } = useAccessPatients();
+  const { prescriptions, loading, addPrescription, refetch } = usePrescriptions();
+  const { stock, reduceStock } = useStock();
   const { settings } = useSettingsStore();
   
   const [selectedPatientId, setSelectedPatientId] = useState('');

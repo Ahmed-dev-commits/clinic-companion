@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useAccessPatients } from '@/hooks/useAccessPatients';
 import { usePatientServices } from '@/hooks/usePatientServices';
+import { usePayments } from '@/hooks/usePayments';
+import { usePrescriptions } from '@/hooks/usePrescriptions';
+import { useLabResults } from '@/hooks/useLabResults';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, Edit, Trash2, Loader2, RefreshCw, ClipboardPlus } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, RefreshCw, ClipboardPlus, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { Patient } from '@/types/hospital';
 import { ServicesState } from '@/types/services';
@@ -37,14 +40,19 @@ import { format } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { AdditionalServicesPanel } from '@/components/patients/AdditionalServicesPanel';
 import { ServicesSummaryDialog } from '@/components/patients/ServicesSummaryDialog';
+import { PatientHistoryDialog } from '@/components/patients/PatientHistoryDialog';
 
 export function PatientsPage() {
   const { patients, loading, error, isDemoMode, isCloud, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
-  const { addService } = usePatientServices();
+  const { services: patientServices, addService } = usePatientServices();
+  const { payments, getPatientPayments } = usePayments();
+  const { prescriptions, getPatientPrescriptions } = usePrescriptions();
+  const { labResults, getPatientLabResults } = useLabResults();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isServicesDialogOpen, setIsServicesDialogOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [currentServices, setCurrentServices] = useState<ServicesState | null>(null);
@@ -166,6 +174,11 @@ export function PatientsPage() {
     setCurrentServices(services);
     setCurrentTotal(grandTotal);
     setIsSummaryOpen(true);
+  };
+
+  const handleViewHistory = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setIsHistoryOpen(true);
   };
 
   const handleDelete = async (patient: Patient) => {
@@ -292,6 +305,14 @@ export function PatientsPage() {
                     <TableCell>{format(new Date(patient.visitDate), 'MMM dd, yyyy')}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="View History"
+                          onClick={() => handleViewHistory(patient)}
+                        >
+                          <History className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -467,6 +488,19 @@ export function PatientsPage() {
           patient={selectedPatient}
           services={currentServices}
           grandTotal={currentTotal}
+        />
+      )}
+
+      {/* Patient History Dialog */}
+      {selectedPatient && (
+        <PatientHistoryDialog
+          open={isHistoryOpen}
+          onOpenChange={setIsHistoryOpen}
+          patient={selectedPatient}
+          payments={getPatientPayments(selectedPatient.id)}
+          prescriptions={getPatientPrescriptions(selectedPatient.id)}
+          labResults={getPatientLabResults(selectedPatient.id)}
+          services={patientServices.filter(s => s.patientId === selectedPatient.id)}
         />
       )}
     </div>

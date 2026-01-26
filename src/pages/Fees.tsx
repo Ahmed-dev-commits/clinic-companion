@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
-import { useHospitalStore } from '@/store/hospitalStore';
+import { useAccessPatients } from '@/hooks/useAccessPatients';
+import { usePayments } from '@/hooks/usePayments';
+import { useStock } from '@/hooks/useStock';
 import { useSettingsStore } from '@/store/settingsStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -22,9 +24,10 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Printer, Plus, Trash2 } from 'lucide-react';
+import { Printer, Plus, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 
 interface MedicineEntry {
   stockId: string;
@@ -54,7 +57,9 @@ const numberToWords = (num: number): string => {
 };
 
 export function FeesPage() {
-  const { patients, payments, stock, addPayment, reduceStock } = useHospitalStore();
+  const { patients } = useAccessPatients();
+  const { payments, loading, addPayment, refetch } = usePayments();
+  const { stock, reduceStock } = useStock();
   const { settings } = useSettingsStore();
   
   const [selectedPatientId, setSelectedPatientId] = useState('');
@@ -120,7 +125,7 @@ export function FeesPage() {
     setSelectedMedicines(selectedMedicines.filter(m => m.stockId !== stockId));
   };
 
-  const handleSubmitPayment = () => {
+  const handleSubmitPayment = async () => {
     if (!selectedPatientId) {
       toast.error('Please select a patient');
       return;
@@ -129,33 +134,37 @@ export function FeesPage() {
     const patient = patients.find(p => p.id === selectedPatientId);
     if (!patient) return;
 
-    // Reduce stock for medicines
-    selectedMedicines.forEach(m => {
-      reduceStock(m.stockId, m.quantity);
-    });
+    try {
+      // Reduce stock for medicines
+      for (const m of selectedMedicines) {
+        await reduceStock(m.stockId, m.quantity);
+      }
 
-    // Create payment record
-    const paymentData = {
-      patientId: selectedPatientId,
-      patientName: patient.name,
-      consultationFee: parseFloat(consultationFee) || 0,
-      labFee: parseFloat(labFee) || 0,
-      medicineFee,
-      totalAmount,
-      paymentMode,
-      medicines: selectedMedicines,
-    };
+      // Create payment record
+      const paymentData = {
+        patientId: selectedPatientId,
+        patientName: patient.name,
+        consultationFee: parseFloat(consultationFee) || 0,
+        labFee: parseFloat(labFee) || 0,
+        medicineFee,
+        totalAmount,
+        paymentMode,
+        medicines: selectedMedicines,
+      };
 
-    addPayment(paymentData);
-    setLastPayment({ ...paymentData, patient, createdAt: new Date().toISOString() });
-    setShowReceipt(true);
-    toast.success('Payment recorded successfully');
+      await addPayment(paymentData);
+      setLastPayment({ ...paymentData, patient, createdAt: new Date().toISOString() });
+      setShowReceipt(true);
+      toast.success('Payment recorded successfully');
 
-    // Reset form
-    setSelectedPatientId('');
-    setConsultationFee('500');
-    setLabFee('0');
-    setSelectedMedicines([]);
+      // Reset form
+      setSelectedPatientId('');
+      setConsultationFee('500');
+      setLabFee('0');
+      setSelectedMedicines([]);
+    } catch (err) {
+      toast.error('Failed to process payment');
+    }
   };
 
   const handlePrint = () => {
@@ -172,6 +181,14 @@ export function FeesPage() {
       <PageHeader
         title="Fee Collection"
         description="Process payments and generate receipts"
+        action={
+          <div className="flex items-center gap-3">
+            <ConnectionStatus />
+            <Button variant="outline" size="icon" onClick={refetch} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
