@@ -39,7 +39,8 @@ import {
   SurgeryType,
   MedicineEntry,
 } from '@/types/services';
-import { useHospitalStore } from '@/store/hospitalStore';
+import { useStock } from '@/hooks/useStock';
+import { usePayments } from '@/hooks/usePayments';
 import { toast } from 'sonner';
 
 interface AdditionalServicesPanelProps {
@@ -58,7 +59,8 @@ export function AdditionalServicesPanel({
   isSubmitting = false,
 }: AdditionalServicesPanelProps) {
   const [services, setServices] = useState<ServicesState>(createEmptyServices);
-  const { stock, reduceStock, addPayment } = useHospitalStore();
+  const { stock, reduceStock } = useStock();
+  const { addPayment } = usePayments();
   
   // Medicine selection state
   const [selectedStockId, setSelectedStockId] = useState('');
@@ -191,26 +193,30 @@ export function AdditionalServicesPanel({
   };
 
   const handleSave = async () => {
-    // Reduce stock for medicines
-    services.feeCollection.medicines.forEach(m => {
-      reduceStock(m.stockId, m.quantity);
-    });
+    try {
+      // Reduce stock for medicines
+      for (const m of services.feeCollection.medicines) {
+        await reduceStock(m.stockId, m.quantity);
+      }
 
-    // Create payment record if there are fees
-    if (grandTotal > 0) {
-      addPayment({
-        patientId,
-        patientName,
-        consultationFee: services.consultation.enabled ? services.consultation.fee : 0,
-        labFee: services.feeCollection.labFee,
-        medicineFee,
-        totalAmount: grandTotal,
-        paymentMode: services.feeCollection.paymentMode,
-        medicines: services.feeCollection.medicines,
-      });
+      // Create payment record if there are fees
+      if (grandTotal > 0) {
+        await addPayment({
+          patientId,
+          patientName,
+          consultationFee: services.consultation.enabled ? services.consultation.fee : 0,
+          labFee: services.feeCollection.labFee,
+          medicineFee,
+          totalAmount: grandTotal,
+          paymentMode: services.feeCollection.paymentMode,
+          medicines: services.feeCollection.medicines,
+        });
+      }
+
+      await onSave(services, grandTotal);
+    } catch (err) {
+      toast.error('Failed to save services');
     }
-
-    await onSave(services, grandTotal);
   };
 
   return (

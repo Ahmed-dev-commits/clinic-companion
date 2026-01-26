@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useHospitalStore } from '@/store/hospitalStore';
+import { useStock } from '@/hooks/useStock';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,14 +28,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { StockItem } from '@/types/hospital';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 
 const CATEGORIES = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Liquid', 'Cream', 'Supplies', 'Equipment', 'Other'];
 
 export function StockPage() {
-  const { stock, addStockItem, updateStockItem, deleteStockItem, getLowStockItems } = useHospitalStore();
+  const { stock, loading, isDemoMode, isCloud, addStockItem, updateStockItem, deleteStockItem, getLowStockItems, refetch } = useStock();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
@@ -86,7 +87,7 @@ export function StockPage() {
     resetForm();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name.trim() || !formData.quantity || !formData.price) {
@@ -102,21 +103,28 @@ export function StockPage() {
       lowStockThreshold: parseInt(formData.lowStockThreshold) || 20,
     };
 
-    if (editingItem) {
-      updateStockItem(editingItem.id, itemData);
-      toast.success('Stock item updated successfully');
-    } else {
-      addStockItem(itemData);
-      toast.success('Stock item added successfully');
+    try {
+      if (editingItem) {
+        await updateStockItem(editingItem.id, itemData);
+        toast.success('Stock item updated successfully');
+      } else {
+        await addStockItem(itemData);
+        toast.success('Stock item added successfully');
+      }
+      handleCloseDialog();
+    } catch (err) {
+      toast.error('Failed to save stock item');
     }
-
-    handleCloseDialog();
   };
 
-  const handleDelete = (item: StockItem) => {
+  const handleDelete = async (item: StockItem) => {
     if (confirm(`Are you sure you want to delete ${item.name}?`)) {
-      deleteStockItem(item.id);
-      toast.success('Stock item deleted successfully');
+      try {
+        await deleteStockItem(item.id);
+        toast.success('Stock item deleted successfully');
+      } catch (err) {
+        toast.error('Failed to delete stock item');
+      }
     }
   };
 
@@ -139,10 +147,16 @@ export function StockPage() {
         title="Stock Management"
         description="Manage medicines and supplies inventory"
         action={
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
+          <div className="flex items-center gap-3">
+            <ConnectionStatus />
+            <Button variant="outline" size="icon" onClick={refetch} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+          </div>
         }
       />
 

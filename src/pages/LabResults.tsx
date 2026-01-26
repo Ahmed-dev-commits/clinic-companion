@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useHospitalStore } from '@/store/hospitalStore';
+import { useAccessPatients } from '@/hooks/useAccessPatients';
+import { useLabResults } from '@/hooks/useLabResults';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useSmsNotificationStore } from '@/store/smsNotificationStore';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -16,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Printer, Download, Search, FlaskConical, Bell, CheckCircle, Clock, Package, Loader2, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, Printer, Download, Search, FlaskConical, Bell, CheckCircle, Clock, Package, Loader2, MessageSquare, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { LabTestResult, LabResult, LabResultStatus } from '@/types/hospital';
@@ -31,6 +32,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { SmsNotificationPanel } from '@/components/SmsNotificationPanel';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 
 // Common lab tests with normal ranges
 const commonLabTests = [
@@ -58,7 +60,8 @@ const commonLabTests = [
 ];
 
 export function LabResultsPage() {
-  const { patients, labResults, addLabResult, updateLabResultStatus, notifyPatient, markAsCollected } = useHospitalStore();
+  const { patients } = useAccessPatients();
+  const { labResults, loading, addLabResult, updateLabResultStatus, notifyPatient, markAsCollected, refetch } = useLabResults();
   const { settings } = useSettingsStore();
   
   const [selectedPatientId, setSelectedPatientId] = useState('');
