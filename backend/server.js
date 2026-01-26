@@ -30,6 +30,17 @@ const dbConfig = {
 // Create connection pool
 let pool;
 
+// Helper function to convert MySQL TIMESTAMP to ISO format
+function formatTimestamp(date) {
+  if (!date) return null;
+  if (date instanceof Date) {
+    return date.toISOString();
+  }
+  // If it's a string, try to parse and convert
+  const parsed = new Date(date);
+  return isNaN(parsed.getTime()) ? date : parsed.toISOString();
+}
+
 // Initialize database connection and tables
 async function initializeDatabase() {
   try {
@@ -198,7 +209,12 @@ async function createTables() {
 app.get('/api/patients', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM Patients ORDER BY CreatedAt DESC');
-    res.json(rows);
+    // Convert timestamps to ISO format
+    const formatted = rows.map(row => ({
+      ...row,
+      CreatedAt: formatTimestamp(row.CreatedAt)
+    }));
+    res.json(formatted);
   } catch (error) {
     console.error('Error fetching patients:', error);
     res.status(500).json({ error: error.message });
@@ -272,7 +288,12 @@ app.delete('/api/patients/:id', async (req, res) => {
 app.get('/api/stock', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM Stock ORDER BY Name');
-    res.json(rows);
+    // Convert timestamps to ISO format
+    const formatted = rows.map(row => ({
+      ...row,
+      CreatedAt: formatTimestamp(row.CreatedAt)
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -329,7 +350,16 @@ app.delete('/api/stock/:id', async (req, res) => {
 app.get('/api/payments', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM Payments ORDER BY CreatedAt DESC');
-    res.json(rows);
+    // Convert timestamps to ISO format AND numeric fields to numbers
+    const formatted = rows.map(row => ({
+      ...row,
+      ConsultationFee: Number(row.ConsultationFee) || 0,
+      LabFee: Number(row.LabFee) || 0,
+      MedicineFee: Number(row.MedicineFee) || 0,
+      TotalAmount: Number(row.TotalAmount) || 0,
+      CreatedAt: formatTimestamp(row.CreatedAt)
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -356,7 +386,12 @@ app.post('/api/payments', async (req, res) => {
 app.get('/api/prescriptions', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM Prescriptions ORDER BY CreatedAt DESC');
-    res.json(rows);
+    // Convert timestamps to ISO format
+    const formatted = rows.map(row => ({
+      ...row,
+      CreatedAt: formatTimestamp(row.CreatedAt)
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -383,7 +418,14 @@ app.post('/api/prescriptions', async (req, res) => {
 app.get('/api/lab-results', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM LabResults ORDER BY CreatedAt DESC');
-    res.json(rows);
+    // Convert timestamps to ISO format
+    const formatted = rows.map(row => ({
+      ...row,
+      CreatedAt: formatTimestamp(row.CreatedAt),
+      NotifiedAt: formatTimestamp(row.NotifiedAt),
+      CollectedAt: formatTimestamp(row.CollectedAt)
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -436,7 +478,14 @@ app.put('/api/lab-results/:id/status', async (req, res) => {
 app.get('/api/patient-services', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM PatientServices ORDER BY CreatedAt DESC');
-    res.json(rows);
+    // Convert timestamps to ISO format AND numeric fields to numbers
+    const formatted = rows.map(row => ({
+      ...row,
+      GrandTotal: Number(row.GrandTotal) || 0,
+      CreatedAt: formatTimestamp(row.CreatedAt),
+      UpdatedAt: formatTimestamp(row.UpdatedAt)
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -448,7 +497,14 @@ app.get('/api/patient-services/:patientId', async (req, res) => {
       'SELECT * FROM PatientServices WHERE PatientID = ? ORDER BY CreatedAt DESC',
       [req.params.patientId]
     );
-    res.json(rows);
+    // Convert timestamps to ISO format AND numeric fields to numbers
+    const formatted = rows.map(row => ({
+      ...row,
+      GrandTotal: Number(row.GrandTotal) || 0,
+      CreatedAt: formatTimestamp(row.CreatedAt),
+      UpdatedAt: formatTimestamp(row.UpdatedAt)
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -490,7 +546,12 @@ app.put('/api/patient-services/:id', async (req, res) => {
 app.get('/api/users', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT ID, Username, Name, Role, IsActive, CreatedAt FROM Users');
-    res.json(rows);
+    // Convert timestamps to ISO format
+    const formatted = rows.map(row => ({
+      ...row,
+      CreatedAt: formatTimestamp(row.CreatedAt)
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

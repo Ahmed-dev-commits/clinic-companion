@@ -41,7 +41,7 @@ export function FeesPage() {
   const { stock, reduceStock } = useStock();
   const { settings } = useSettingsStore();
   const [activeTab, setActiveTab] = useState('all');
-  
+
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [consultationFee, setConsultationFee] = useState('500');
   const [labFee, setLabFee] = useState('0');
@@ -70,7 +70,7 @@ export function FeesPage() {
 
   // Merged records for "All" tab
   const mergedRecords = useMemo(() => {
-    const paymentRecords = payments.map(p => ({
+    const paymentRecords = (payments || []).map(p => ({
       type: 'payment' as const,
       id: p.id,
       patientId: p.patientId,
@@ -80,7 +80,7 @@ export function FeesPage() {
       data: p
     }));
 
-    const serviceRecords = patientServices.map(s => {
+    const serviceRecords = (patientServices || []).map(s => {
       const patient = patients.find(p => p.id === s.patientId);
       return {
         type: 'service' as const,
@@ -94,19 +94,23 @@ export function FeesPage() {
     });
 
     return [...paymentRecords, ...serviceRecords]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA;
+      });
   }, [payments, patientServices, patients]);
 
   // Today's totals
   const todayTotal = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const paymentTotal = payments
-      .filter(p => p.createdAt.split('T')[0] === today)
-      .reduce((sum, p) => sum + p.totalAmount, 0);
-    const serviceTotal = patientServices
-      .filter(s => s.createdAt.split('T')[0] === today)
-      .reduce((sum, s) => sum + s.grandTotal, 0);
-    return paymentTotal + serviceTotal;
+    const paymentTotal = (payments || [])
+      .filter(p => p.createdAt?.split('T')[0] === today)
+      .reduce((sum, p) => sum + (Number(p.totalAmount) || 0), 0);
+    const serviceTotal = (patientServices || [])
+      .filter(s => s.createdAt?.split('T')[0] === today)
+      .reduce((sum, s) => sum + (Number(s.grandTotal) || 0), 0);
+    return Number(paymentTotal + serviceTotal) || 0;
   }, [payments, patientServices]);
 
   const handleAddMedicine = () => {
@@ -182,7 +186,7 @@ export function FeesPage() {
       setConsultationFee('500');
       setLabFee('0');
       setSelectedMedicines([]);
-      
+
       // Refresh data
       refetch();
     } catch (err) {
@@ -236,7 +240,9 @@ export function FeesPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Today's Collection</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">Rs. {todayTotal.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-primary">
+              Rs. {typeof todayTotal === 'number' && !isNaN(todayTotal) ? todayTotal.toFixed(2) : '0.00'}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -261,7 +267,7 @@ export function FeesPage() {
         {/* Fee Form */}
         <div className="form-section">
           <h2 className="text-lg font-semibold mb-4">New Payment</h2>
-          
+
           <div className="space-y-4">
             <div>
               <Label>Select Patient *</Label>
@@ -401,9 +407,9 @@ export function FeesPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Transaction Records</CardTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => { refetch(); refetchServices(); }}
                 disabled={loading || servicesLoading}
               >
@@ -537,10 +543,10 @@ export function FeesPage() {
                   <p className="text-center text-muted-foreground py-4">No service records found</p>
                 ) : (
                   patientServices.map((service) => {
-                    const servicesData: ServicesState = typeof service.services === 'string' 
-                      ? JSON.parse(service.services) 
+                    const servicesData: ServicesState = typeof service.services === 'string'
+                      ? JSON.parse(service.services)
                       : service.services as ServicesState;
-                    
+
                     const enabledServices = getEnabledServices(servicesData);
                     const patient = patients.find(p => p.id === service.patientId);
 
@@ -593,7 +599,7 @@ export function FeesPage() {
         service={selectedService}
         patient={patients.find(p => p.id === selectedService?.patientId) || null}
       />
-      
+
       <PaymentReceiptDialog
         open={paymentReceiptOpen}
         onOpenChange={setPaymentReceiptOpen}

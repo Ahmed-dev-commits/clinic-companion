@@ -71,7 +71,7 @@ export function usePayments() {
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       if (isCloudEnvironment()) {
         setIsCloud(true);
         const data = await supabasePaymentsApi.getAll();
@@ -104,7 +104,7 @@ export function usePayments() {
 
   const addPayment = async (paymentData: Omit<Payment, 'id' | 'createdAt'>) => {
     const id = generateId('PAY');
-    
+
     if (isCloud) {
       await supabasePaymentsApi.create({
         id,
@@ -157,7 +157,7 @@ export function usePayments() {
 
   const getTodayPayments = () => {
     const today = new Date().toISOString().split('T')[0];
-    return payments.filter(p => p.createdAt.split('T')[0] === today);
+    return payments.filter(p => p.createdAt?.split('T')[0] === today);
   };
 
   const getTodayTotalCollection = () => getTodayPayments().reduce((sum, p) => sum + p.totalAmount, 0);
