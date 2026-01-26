@@ -7,19 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Printer, RefreshCw, FileText, CreditCard } from 'lucide-react';
-import { format } from 'date-fns';
+import { Printer, RefreshCw, FileText, CreditCard, CalendarIcon, X } from 'lucide-react';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ServicesState, PatientServices } from '@/types/services';
 import { Payment } from '@/types/hospital';
 import { ServiceReceiptDialog } from '@/components/fees/ServiceReceiptDialog';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 export function FeesPage() {
   const { patients } = useAccessPatients();
   const { payments, loading, refetch } = usePayments();
   const { services: patientServices, loading: servicesLoading, refetch: refetchServices } = usePatientServices();
   const [activeTab, setActiveTab] = useState('all');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   // Receipt dialog states
   const [selectedService, setSelectedService] = useState<PatientServices | null>(null);
@@ -27,46 +32,74 @@ export function FeesPage() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
 
-  // Merged records for "All" tab
-  const mergedRecords = useMemo(() => {
-    const paymentRecords = payments.map(p => ({
-      type: 'payment' as const,
-      id: p.id,
-      patientId: p.patientId,
-      patientName: p.patientName,
-      amount: p.totalAmount,
-      date: p.createdAt,
-      data: p
-    }));
+  // Filter function for date range
+  const isInDateRange = (dateString: string) => {
+    if (!startDate && !endDate) return true;
+    const recordDate = new Date(dateString);
+    if (startDate && endDate) {
+      return isWithinInterval(recordDate, { start: startOfDay(startDate), end: endOfDay(endDate) });
+    }
+    if (startDate) return recordDate >= startOfDay(startDate);
+    if (endDate) return recordDate <= endOfDay(endDate);
+    return true;
+  };
 
-    const serviceRecords = patientServices.map(s => {
-      const patient = patients.find(p => p.id === s.patientId);
-      return {
-        type: 'service' as const,
-        id: s.id,
-        patientId: s.patientId,
-        patientName: patient?.name || s.patientId,
-        amount: s.grandTotal,
-        date: s.createdAt,
-        data: s
-      };
-    });
+  const clearDateFilter = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
+
+  // Merged records for "All" tab with date filtering
+  const mergedRecords = useMemo(() => {
+    const paymentRecords = payments
+      .filter(p => isInDateRange(p.createdAt))
+      .map(p => ({
+        type: 'payment' as const,
+        id: p.id,
+        patientId: p.patientId,
+        patientName: p.patientName,
+        amount: p.totalAmount,
+        date: p.createdAt,
+        data: p
+      }));
+
+    const serviceRecords = patientServices
+      .filter(s => isInDateRange(s.createdAt))
+      .map(s => {
+        const patient = patients.find(p => p.id === s.patientId);
+        return {
+          type: 'service' as const,
+          id: s.id,
+          patientId: s.patientId,
+          patientName: patient?.name || s.patientId,
+          amount: s.grandTotal,
+          date: s.createdAt,
+          data: s
+        };
+      });
 
     return [...paymentRecords, ...serviceRecords]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [payments, patientServices, patients]);
+  }, [payments, patientServices, patients, startDate, endDate]);
 
-  // Today's totals
-  const todayTotal = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const paymentTotal = payments
-      .filter(p => p.createdAt.split('T')[0] === today)
-      .reduce((sum, p) => sum + p.totalAmount, 0);
-    const serviceTotal = patientServices
-      .filter(s => s.createdAt.split('T')[0] === today)
-      .reduce((sum, s) => sum + s.grandTotal, 0);
+  // Filtered payments for Payments tab
+  const filteredPayments = useMemo(() => 
+    payments.filter(p => isInDateRange(p.createdAt)), 
+    [payments, startDate, endDate]
+  );
+
+  // Filtered services for Services tab
+  const filteredServices = useMemo(() => 
+    patientServices.filter(s => isInDateRange(s.createdAt)), 
+    [patientServices, startDate, endDate]
+  );
+
+  // Today's totals (from filtered records)
+  const filteredTotal = useMemo(() => {
+    const paymentTotal = filteredPayments.reduce((sum, p) => sum + p.totalAmount, 0);
+    const serviceTotal = filteredServices.reduce((sum, s) => sum + s.grandTotal, 0);
     return paymentTotal + serviceTotal;
-  }, [payments, patientServices]);
+  }, [filteredPayments, filteredServices]);
 
   const handleViewPaymentReceipt = (payment: Payment) => {
     setSelectedPayment(payment);
@@ -107,14 +140,55 @@ export function FeesPage() {
         }
       />
 
+      {/* Date Range Filter */}
+      <Card className="mb-6">
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Filter by date:</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "MMM dd, yyyy") : "From"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+              <span className="text-muted-foreground">to</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "MMM dd, yyyy") : "To"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+              {(startDate || endDate) && (
+                <Button variant="ghost" size="icon" onClick={clearDateFilter} title="Clear filter">
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Collection</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {startDate || endDate ? 'Filtered Total' : "Today's Collection"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">Rs. {todayTotal.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-primary">Rs. {filteredTotal.toFixed(2)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -122,7 +196,7 @@ export function FeesPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Payments</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{payments.length}</div>
+            <div className="text-2xl font-bold">{filteredPayments.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -130,7 +204,7 @@ export function FeesPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Services</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{patientServices.length}</div>
+            <div className="text-2xl font-bold">{filteredServices.length}</div>
           </CardContent>
         </Card>
       </div>
@@ -158,11 +232,11 @@ export function FeesPage() {
               </TabsTrigger>
               <TabsTrigger value="payments" className="flex items-center gap-1 text-xs">
                 <CreditCard className="h-3 w-3" />
-                Payments ({payments.length})
+                Payments ({filteredPayments.length})
               </TabsTrigger>
               <TabsTrigger value="services" className="flex items-center gap-1 text-xs">
                 <FileText className="h-3 w-3" />
-                Services ({patientServices.length})
+                Services ({filteredServices.length})
               </TabsTrigger>
             </TabsList>
 
@@ -224,10 +298,10 @@ export function FeesPage() {
 
             {/* Payments Tab */}
             <TabsContent value="payments" className="space-y-3 max-h-[500px] overflow-y-auto">
-              {payments.length === 0 ? (
+              {filteredPayments.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">No payment records found</p>
               ) : (
-                payments.map((payment) => (
+                filteredPayments.map((payment) => (
                   <div
                     key={payment.id}
                     className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
@@ -272,10 +346,10 @@ export function FeesPage() {
 
             {/* Services Tab */}
             <TabsContent value="services" className="space-y-3 max-h-[500px] overflow-y-auto">
-              {patientServices.length === 0 ? (
+              {filteredServices.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">No service records found</p>
               ) : (
-                patientServices.map((service) => {
+                filteredServices.map((service) => {
                   const servicesData: ServicesState = typeof service.services === 'string' 
                     ? JSON.parse(service.services) 
                     : service.services as ServicesState;
