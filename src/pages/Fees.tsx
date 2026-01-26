@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Printer, RefreshCw, FileText, CreditCard, CalendarIcon, X } from 'lucide-react';
-import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ServicesState, PatientServices } from '@/types/services';
 import { Payment } from '@/types/hospital';
@@ -17,6 +17,7 @@ import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export function FeesPage() {
   const { patients } = useAccessPatients();
@@ -25,6 +26,7 @@ export function FeesPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [quickFilter, setQuickFilter] = useState<string>('');
 
   // Receipt dialog states
   const [selectedService, setSelectedService] = useState<PatientServices | null>(null);
@@ -47,6 +49,39 @@ export function FeesPage() {
   const clearDateFilter = () => {
     setStartDate(undefined);
     setEndDate(undefined);
+    setQuickFilter('');
+  };
+
+  const handleQuickFilter = (value: string) => {
+    setQuickFilter(value);
+    const today = new Date();
+    
+    switch (value) {
+      case 'today':
+        setStartDate(startOfDay(today));
+        setEndDate(endOfDay(today));
+        break;
+      case 'week':
+        setStartDate(startOfWeek(today, { weekStartsOn: 1 }));
+        setEndDate(endOfWeek(today, { weekStartsOn: 1 }));
+        break;
+      case 'month':
+        setStartDate(startOfMonth(today));
+        setEndDate(endOfMonth(today));
+        break;
+      default:
+        setStartDate(undefined);
+        setEndDate(undefined);
+    }
+  };
+
+  const handleManualDateChange = (type: 'start' | 'end', date: Date | undefined) => {
+    setQuickFilter(''); // Clear quick filter when manually selecting dates
+    if (type === 'start') {
+      setStartDate(date);
+    } else {
+      setEndDate(date);
+    }
   };
 
   // Merged records for "All" tab with date filtering
@@ -145,7 +180,21 @@ export function FeesPage() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Filter by date:</span>
+              <span className="text-sm font-medium text-muted-foreground">Quick filters:</span>
+              <ToggleGroup type="single" value={quickFilter} onValueChange={handleQuickFilter}>
+                <ToggleGroupItem value="today" aria-label="Today" className="text-xs px-3">
+                  Today
+                </ToggleGroupItem>
+                <ToggleGroupItem value="week" aria-label="This Week" className="text-xs px-3">
+                  This Week
+                </ToggleGroupItem>
+                <ToggleGroupItem value="month" aria-label="This Month" className="text-xs px-3">
+                  This Month
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Custom:</span>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
@@ -154,7 +203,7 @@ export function FeesPage() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className="p-3 pointer-events-auto" />
+                  <Calendar mode="single" selected={startDate} onSelect={(date) => handleManualDateChange('start', date)} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
               <span className="text-muted-foreground">to</span>
@@ -166,7 +215,7 @@ export function FeesPage() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus className="p-3 pointer-events-auto" />
+                  <Calendar mode="single" selected={endDate} onSelect={(date) => handleManualDateChange('end', date)} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
               {(startDate || endDate) && (
