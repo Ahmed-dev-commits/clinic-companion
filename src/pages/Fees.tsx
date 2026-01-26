@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useAccessPatients } from '@/hooks/useAccessPatients';
 import { usePayments } from '@/hooks/usePayments';
+import { usePatientServices } from '@/hooks/usePatientServices';
 import { useStock } from '@/hooks/useStock';
 import { useSettingsStore } from '@/store/settingsStore';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -24,10 +25,12 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Printer, Plus, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Printer, Plus, Trash2, RefreshCw, Loader2, FileText, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { ServicesState } from '@/types/services';
 
 interface MedicineEntry {
   stockId: string;
@@ -59,8 +62,10 @@ const numberToWords = (num: number): string => {
 export function FeesPage() {
   const { patients } = useAccessPatients();
   const { payments, loading, addPayment, refetch } = usePayments();
+  const { services: patientServices, loading: servicesLoading, refetch: refetchServices } = usePatientServices();
   const { stock, reduceStock } = useStock();
   const { settings } = useSettingsStore();
+  const [activeTab, setActiveTab] = useState('payments');
   
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [consultationFee, setConsultationFee] = useState('500');
@@ -542,33 +547,121 @@ export function FeesPage() {
             </Card>
           )}
 
-          {/* Recent Payments */}
+          {/* All Records with Tabs */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Payments</CardTitle>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Payment Records</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => { refetch(); refetchServices(); }}
+                  disabled={loading || servicesLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${(loading || servicesLoading) ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {payments.slice(-5).reverse().map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card"
-                  >
-                    <div>
-                      <p className="font-medium">{payment.patientName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(payment.createdAt), 'MMM dd, yyyy')}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">Rs. {payment.totalAmount}</p>
-                      <Badge variant={payment.paymentMode === 'Card' ? 'default' : 'secondary'}>
-                        {payment.paymentMode}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="payments" className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payments ({payments.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="services" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Services ({patientServices.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="payments" className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {payments.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">No payment records found</p>
+                  ) : (
+                    payments.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                      >
+                        <div>
+                          <p className="font-medium">{payment.patientName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(payment.createdAt), 'MMM dd, yyyy HH:mm')}
+                          </p>
+                          <div className="flex gap-2 mt-1">
+                            {payment.consultationFee > 0 && (
+                              <Badge variant="outline" className="text-xs">Consult: Rs.{payment.consultationFee}</Badge>
+                            )}
+                            {payment.labFee > 0 && (
+                              <Badge variant="outline" className="text-xs">Lab: Rs.{payment.labFee}</Badge>
+                            )}
+                            {payment.medicineFee > 0 && (
+                              <Badge variant="outline" className="text-xs">Med: Rs.{payment.medicineFee}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-primary">Rs. {payment.totalAmount}</p>
+                          <Badge variant={payment.paymentMode === 'Card' ? 'default' : 'secondary'}>
+                            {payment.paymentMode}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </TabsContent>
+
+                <TabsContent value="services" className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {patientServices.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">No service records found</p>
+                  ) : (
+                    patientServices.map((service) => {
+                      const servicesData: ServicesState = typeof service.services === 'string' 
+                        ? JSON.parse(service.services) 
+                        : service.services as ServicesState;
+                      
+                      const enabledServices: string[] = [];
+                      if (servicesData?.consultation?.enabled) enabledServices.push('Consultation');
+                      if (servicesData?.ultrasound?.enabled) enabledServices.push('Ultrasound');
+                      if (servicesData?.ecg?.enabled) enabledServices.push('ECG');
+                      if (servicesData?.bpReading?.enabled) enabledServices.push('BP');
+                      if (servicesData?.injection?.enabled) enabledServices.push('Injection');
+                      if (servicesData?.retention?.enabled) enabledServices.push('Retention');
+                      if (servicesData?.surgery?.enabled) enabledServices.push('Surgery');
+                      if (servicesData?.feeCollection?.labFee > 0) enabledServices.push('Lab Fee');
+                      if (servicesData?.feeCollection?.medicines?.length > 0) enabledServices.push('Medicines');
+
+                      const patient = patients.find(p => p.id === service.patientId);
+
+                      return (
+                        <div
+                          key={service.id}
+                          className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                        >
+                          <div>
+                            <p className="font-medium">{patient?.name || service.patientId}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(service.createdAt), 'MMM dd, yyyy HH:mm')}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {enabledServices.map((s) => (
+                                <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-primary">Rs. {service.grandTotal}</p>
+                            <Badge variant={service.status === 'Completed' ? 'default' : 'secondary'}>
+                              {service.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
