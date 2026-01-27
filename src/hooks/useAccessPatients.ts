@@ -75,6 +75,8 @@ function rowToPatient(row: PatientRow): Patient {
     visitDate: row.visit_date || '',
     symptoms: row.symptoms || '',
     createdAt: row.created_at || new Date().toISOString(),
+    registeredBy: row.registered_by || undefined,
+    registeredByRole: row.registered_by_role || undefined,
   };
 }
 
@@ -138,6 +140,8 @@ export function useAccessPatients() {
         address: patientData.address,
         visit_date: patientData.visitDate,
         symptoms: patientData.symptoms,
+        registered_by: patientData.registeredBy || null,
+        registered_by_role: patientData.registeredByRole || null,
       });
       await fetchPatients();
       return id;
