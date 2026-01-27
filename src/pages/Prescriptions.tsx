@@ -539,7 +539,7 @@ export function PrescriptionsPage() {
               <Label className="text-sm font-medium">Add Medicine (Search with 3+ characters)</Label>
               <div className="grid grid-cols-1 gap-2">
                 <MedicineSearch
-                  stock={stock.filter(s => s.quantity > 0)}
+                  stock={stock}
                   onSelect={(medicine) => setNewMedicine({ ...newMedicine, name: medicine.name })}
                   value={newMedicine.name}
                   placeholder="Search medicine by name..."

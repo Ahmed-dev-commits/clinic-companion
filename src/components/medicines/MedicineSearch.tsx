@@ -105,20 +105,10 @@ export function MedicineSearch({
                 medicine.quantity <= medicine.lowStockThreshold && "bg-destructive/5"
               )}
             >
-              <Pill className="h-4 w-4 text-primary flex-shrink-0" />
+            <Pill className="h-4 w-4 text-primary flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{medicine.name}</p>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{medicine.category}</span>
-                  <span>•</span>
-                  <span className={cn(
-                    medicine.quantity <= medicine.lowStockThreshold ? "text-destructive" : "text-muted-foreground"
-                  )}>
-                    Stock: {medicine.quantity}
-                  </span>
-                  <span>•</span>
-                  <span>Rs. {medicine.price}</span>
-                </div>
+                <p className="text-xs text-muted-foreground">{medicine.category}</p>
               </div>
             </button>
           ))}
