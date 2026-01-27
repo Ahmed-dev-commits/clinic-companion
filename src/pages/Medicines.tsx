@@ -29,7 +29,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, Pill, AlertTriangle, Package, RefreshCw, Loader2, Plus, Edit } from 'lucide-react';
+import { Search, Pill, RefreshCw, Loader2, Plus, Edit } from 'lucide-react';
 import { StockItem } from '@/types/hospital';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { toast } from 'sonner';
@@ -38,7 +38,7 @@ const CATEGORIES = ['All', 'Tablet', 'Capsule', 'Syrup', 'Injection', 'Liquid', 
 const FORM_CATEGORIES = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Liquid', 'Cream', 'Supplies', 'Equipment', 'Other'];
 
 export function MedicinesPage() {
-  const { stock, loading, getLowStockItems, refetch, addStockItem, updateStockItem } = useStock();
+  const { stock, loading, refetch, addStockItem, updateStockItem } = useStock();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [selectedMedicine, setSelectedMedicine] = useState<StockItem | null>(null);
@@ -53,8 +53,6 @@ export function MedicinesPage() {
     price: '',
     lowStockThreshold: '20',
   });
-
-  const lowStockItems = getLowStockItems();
 
   // Filter medicines - only show when 3+ characters typed or no search
   const filteredMedicines = stock.filter((item) => {
@@ -73,7 +71,6 @@ export function MedicinesPage() {
   // Stats
   const totalMedicines = stock.length;
   const totalCategories = new Set(stock.map(s => s.category)).size;
-  const totalValue = stock.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
   const resetForm = () => {
     setFormData({
@@ -157,7 +154,7 @@ export function MedicinesPage() {
       />
 
       {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Medicines</CardTitle>
@@ -170,28 +167,10 @@ export function MedicinesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Categories</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <Pill className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalCategories}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{lowStockItems.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Stock Value</CardTitle>
-            <span className="text-sm font-medium text-muted-foreground">Rs.</span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalValue.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
@@ -238,22 +217,20 @@ export function MedicinesPage() {
                 <TableRow>
                   <TableHead>Medicine Name</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
                   <TableHead className="text-right">Price (Rs.)</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={4} className="text-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 ) : filteredMedicines.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                       {searchQuery.length >= 3 
                         ? `No medicines found for "${searchQuery}"`
                         : 'No medicines available'
@@ -262,7 +239,6 @@ export function MedicinesPage() {
                   </TableRow>
                 ) : (
                   filteredMedicines.map((item) => {
-                    const isLowStock = item.quantity <= item.lowStockThreshold;
                     const isSelected = selectedMedicine?.id === item.id;
                     return (
                       <TableRow 
@@ -279,22 +255,7 @@ export function MedicinesPage() {
                         <TableCell>
                           <Badge variant="outline">{item.category}</Badge>
                         </TableCell>
-                        <TableCell className={`text-right font-medium ${isLowStock ? 'text-destructive' : ''}`}>
-                          {item.quantity}
-                        </TableCell>
                         <TableCell className="text-right">Rs. {item.price}</TableCell>
-                        <TableCell>
-                          {isLowStock ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-destructive/10 text-destructive text-xs font-medium">
-                              <AlertTriangle className="h-3 w-3" />
-                              Low Stock
-                            </span>
-                          ) : (
-                            <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0">
-                              In Stock
-                            </Badge>
-                          )}
-                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
@@ -344,23 +305,9 @@ export function MedicinesPage() {
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Category</p>
                       <p className="text-sm font-medium">{selectedMedicine.category}</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Current Stock</p>
-                      <p className={`text-lg font-bold ${selectedMedicine.quantity <= selectedMedicine.lowStockThreshold ? 'text-destructive' : 'text-green-600'}`}>
-                        {selectedMedicine.quantity} units
-                      </p>
-                    </div>
-                    <div>
+                    <div className="col-span-2">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Unit Price</p>
                       <p className="text-lg font-bold">Rs. {selectedMedicine.price}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Low Stock Alert</p>
-                      <p className="text-sm">{selectedMedicine.lowStockThreshold} units</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Value</p>
-                      <p className="text-sm font-medium">Rs. {(selectedMedicine.price * selectedMedicine.quantity).toLocaleString()}</p>
                     </div>
                   </div>
 
@@ -372,18 +319,6 @@ export function MedicinesPage() {
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Medicine
                   </Button>
-
-                  {selectedMedicine.quantity <= selectedMedicine.lowStockThreshold && (
-                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                      <div className="flex items-center gap-2 text-destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span className="text-sm font-medium">Low Stock Warning</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Stock is below the threshold of {selectedMedicine.lowStockThreshold} units. Please reorder soon.
-                      </p>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -394,38 +329,6 @@ export function MedicinesPage() {
             </CardContent>
           </Card>
 
-          {/* Low Stock Items Quick View */}
-          {lowStockItems.length > 0 && (
-            <Card className="mt-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  Low Stock Alert ({lowStockItems.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {lowStockItems.slice(0, 5).map((item) => (
-                    <div 
-                      key={item.id}
-                      className="flex items-center justify-between p-2 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10 transition-colors"
-                      onClick={() => setSelectedMedicine(item)}
-                    >
-                      <span className="text-sm font-medium truncate">{item.name}</span>
-                      <Badge variant="destructive" className="text-xs">
-                        {item.quantity} left
-                      </Badge>
-                    </div>
-                  ))}
-                  {lowStockItems.length > 5 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      +{lowStockItems.length - 5} more items
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
 
