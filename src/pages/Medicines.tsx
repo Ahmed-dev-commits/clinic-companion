@@ -49,7 +49,6 @@ export function MedicinesPage() {
   const [formData, setFormData] = useState({
     name: '',
     category: 'Tablet',
-    price: '',
   });
 
   // Filter medicines - only show when 3+ characters typed or no search
@@ -74,7 +73,6 @@ export function MedicinesPage() {
     setFormData({
       name: '',
       category: 'Tablet',
-      price: '',
     });
     setEditingItem(null);
   };
@@ -85,7 +83,6 @@ export function MedicinesPage() {
       setFormData({
         name: item.name,
         category: item.category,
-        price: item.price.toString(),
       });
     } else {
       resetForm();
@@ -101,8 +98,8 @@ export function MedicinesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.price) {
-      toast.error('Please fill in all required fields');
+    if (!formData.name.trim()) {
+      toast.error('Please enter medicine name');
       return;
     }
 
@@ -110,7 +107,7 @@ export function MedicinesPage() {
       name: formData.name.trim(),
       category: formData.category,
       quantity: editingItem?.quantity ?? 0,
-      price: parseFloat(formData.price),
+      price: editingItem?.price ?? 0,
       lowStockThreshold: editingItem?.lowStockThreshold ?? 20,
     };
 
@@ -211,20 +208,19 @@ export function MedicinesPage() {
                 <TableRow>
                   <TableHead>Medicine Name</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Price (Rs.)</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8">
+                    <TableCell colSpan={3} className="text-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 ) : filteredMedicines.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                       {searchQuery.length >= 3 
                         ? `No medicines found for "${searchQuery}"`
                         : 'No medicines available'
@@ -249,7 +245,6 @@ export function MedicinesPage() {
                         <TableCell>
                           <Badge variant="outline">{item.category}</Badge>
                         </TableCell>
-                        <TableCell className="text-right">Rs. {item.price}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
@@ -290,7 +285,7 @@ export function MedicinesPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Item ID</p>
                       <p className="font-mono text-sm">{selectedMedicine.id}</p>
@@ -298,10 +293,6 @@ export function MedicinesPage() {
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Category</p>
                       <p className="text-sm font-medium">{selectedMedicine.category}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Unit Price</p>
-                      <p className="text-lg font-bold">Rs. {selectedMedicine.price}</p>
                     </div>
                   </div>
 
@@ -368,18 +359,6 @@ export function MedicinesPage() {
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="price">Price (Rs.) *</Label>
-              <Input
-                id="price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCloseDialog}>
