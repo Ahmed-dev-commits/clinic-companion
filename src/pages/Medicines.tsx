@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStock } from '@/hooks/useStock';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -9,6 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -20,17 +29,30 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, Pill, AlertTriangle, Package, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, Pill, AlertTriangle, Package, RefreshCw, Loader2, Plus, Edit } from 'lucide-react';
 import { StockItem } from '@/types/hospital';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { toast } from 'sonner';
 
 const CATEGORIES = ['All', 'Tablet', 'Capsule', 'Syrup', 'Injection', 'Liquid', 'Cream', 'Supplies', 'Equipment', 'Other'];
+const FORM_CATEGORIES = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Liquid', 'Cream', 'Supplies', 'Equipment', 'Other'];
 
 export function MedicinesPage() {
-  const { stock, loading, getLowStockItems, refetch } = useStock();
+  const { stock, loading, getLowStockItems, refetch, addStockItem, updateStockItem } = useStock();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [selectedMedicine, setSelectedMedicine] = useState<StockItem | null>(null);
+  
+  // Dialog state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<StockItem | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    category: 'Tablet',
+    quantity: '',
+    price: '',
+    lowStockThreshold: '20',
+  });
 
   const lowStockItems = getLowStockItems();
 
@@ -53,16 +75,82 @@ export function MedicinesPage() {
   const totalCategories = new Set(stock.map(s => s.category)).size;
   const totalValue = stock.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      category: 'Tablet',
+      quantity: '',
+      price: '',
+      lowStockThreshold: '20',
+    });
+    setEditingItem(null);
+  };
+
+  const handleOpenDialog = (item?: StockItem) => {
+    if (item) {
+      setEditingItem(item);
+      setFormData({
+        name: item.name,
+        category: item.category,
+        quantity: item.quantity.toString(),
+        price: item.price.toString(),
+        lowStockThreshold: item.lowStockThreshold.toString(),
+      });
+    } else {
+      resetForm();
+    }
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name.trim() || !formData.quantity || !formData.price) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const itemData = {
+      name: formData.name.trim(),
+      category: formData.category,
+      quantity: parseInt(formData.quantity),
+      price: parseFloat(formData.price),
+      lowStockThreshold: parseInt(formData.lowStockThreshold) || 20,
+    };
+
+    try {
+      if (editingItem) {
+        await updateStockItem(editingItem.id, itemData);
+        toast.success('Medicine updated successfully');
+      } else {
+        await addStockItem(itemData);
+        toast.success('Medicine added successfully');
+      }
+      handleCloseDialog();
+    } catch (err) {
+      toast.error('Failed to save medicine');
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="Medicines"
-        description="View and search available medicines from pharmacy"
+        description="Add, update, and manage medicines for prescriptions"
         action={
           <div className="flex items-center gap-3">
             <ConnectionStatus />
             <Button variant="outline" size="icon" onClick={refetch} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Medicine
             </Button>
           </div>
         }
@@ -153,18 +241,19 @@ export function MedicinesPage() {
                   <TableHead className="text-right">Stock</TableHead>
                   <TableHead className="text-right">Price (Rs.)</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 ) : filteredMedicines.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       {searchQuery.length >= 3 
                         ? `No medicines found for "${searchQuery}"`
                         : 'No medicines available'
@@ -205,6 +294,18 @@ export function MedicinesPage() {
                               In Stock
                             </Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDialog(item);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -263,6 +364,15 @@ export function MedicinesPage() {
                     </div>
                   </div>
 
+                  <Button 
+                    className="w-full mt-4" 
+                    variant="outline"
+                    onClick={() => handleOpenDialog(selectedMedicine)}
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Medicine
+                  </Button>
+
                   {selectedMedicine.quantity <= selectedMedicine.lowStockThreshold && (
                     <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                       <div className="flex items-center gap-2 text-destructive">
@@ -318,6 +428,98 @@ export function MedicinesPage() {
           )}
         </div>
       </div>
+
+      {/* Add/Edit Medicine Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingItem ? 'Edit Medicine' : 'Add New Medicine'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingItem
+                ? 'Update medicine details below.'
+                : 'Add a new medicine to the inventory.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Medicine Name *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Paracetamol 500mg"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="category">Category *</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FORM_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="quantity">Quantity *</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="0"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="price">Price (Rs.) *</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="threshold">Low Stock Threshold</Label>
+              <Input
+                id="threshold"
+                type="number"
+                min="0"
+                value={formData.lowStockThreshold}
+                onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
+                placeholder="20"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingItem ? 'Update' : 'Add Medicine'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
