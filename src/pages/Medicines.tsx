@@ -49,9 +49,7 @@ export function MedicinesPage() {
   const [formData, setFormData] = useState({
     name: '',
     category: 'Tablet',
-    quantity: '',
     price: '',
-    lowStockThreshold: '20',
   });
 
   // Filter medicines - only show when 3+ characters typed or no search
@@ -76,9 +74,7 @@ export function MedicinesPage() {
     setFormData({
       name: '',
       category: 'Tablet',
-      quantity: '',
       price: '',
-      lowStockThreshold: '20',
     });
     setEditingItem(null);
   };
@@ -89,9 +85,7 @@ export function MedicinesPage() {
       setFormData({
         name: item.name,
         category: item.category,
-        quantity: item.quantity.toString(),
         price: item.price.toString(),
-        lowStockThreshold: item.lowStockThreshold.toString(),
       });
     } else {
       resetForm();
@@ -107,7 +101,7 @@ export function MedicinesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.quantity || !formData.price) {
+    if (!formData.name.trim() || !formData.price) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -115,9 +109,9 @@ export function MedicinesPage() {
     const itemData = {
       name: formData.name.trim(),
       category: formData.category,
-      quantity: parseInt(formData.quantity),
+      quantity: editingItem?.quantity ?? 0,
       price: parseFloat(formData.price),
-      lowStockThreshold: parseInt(formData.lowStockThreshold) || 20,
+      lowStockThreshold: editingItem?.lowStockThreshold ?? 20,
     };
 
     try {
@@ -374,41 +368,16 @@ export function MedicinesPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="quantity">Quantity *</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min="0"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label htmlFor="price">Price (Rs.) *</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
             <div>
-              <Label htmlFor="threshold">Low Stock Threshold</Label>
+              <Label htmlFor="price">Price (Rs.) *</Label>
               <Input
-                id="threshold"
+                id="price"
                 type="number"
                 min="0"
-                value={formData.lowStockThreshold}
-                onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
-                placeholder="20"
+                step="0.01"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                placeholder="0.00"
               />
             </div>
 
