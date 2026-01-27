@@ -60,11 +60,11 @@ const App = () => (
                       }
                     />
                     
-                    {/* Stock/Pharmacy - Receptionist, LabTechnician */}
+                    {/* Pharmacy - Receptionist only */}
                     <Route
                       path="/stock"
                       element={
-                        <ProtectedRoute allowedRoles={['Receptionist', 'LabTechnician', 'Admin']}>
+                        <ProtectedRoute allowedRoles={['Receptionist', 'Admin']}>
                           <StockPage />
                         </ProtectedRoute>
                       }
@@ -90,11 +90,11 @@ const App = () => (
                       }
                     />
                     
-                    {/* Lab Results - Lab Technician, Doctor */}
+                    {/* Lab Results - Lab Technician only */}
                     <Route
                       path="/lab-results"
                       element={
-                        <ProtectedRoute allowedRoles={['LabTechnician', 'Doctor', 'Admin']}>
+                        <ProtectedRoute allowedRoles={['LabTechnician', 'Admin']}>
                           <LabResultsPage />
                         </ProtectedRoute>
                       }
