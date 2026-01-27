@@ -9,6 +9,7 @@ import { DashboardPage } from "./pages/Dashboard";
 import { PatientsPage } from "./pages/Patients";
 import { FeesPage } from "./pages/Fees";
 import { StockPage } from "./pages/Stock";
+import { MedicinesPage } from "./pages/Medicines";
 import { PrescriptionsPage } from "./pages/Prescriptions";
 import { LabResultsPage } from "./pages/LabResults";
 import { SettingsPage } from "./pages/Settings";
@@ -59,12 +60,22 @@ const App = () => (
                       }
                     />
                     
-                    {/* Stock - Receptionist, Doctor */}
+                    {/* Stock/Pharmacy - Receptionist, LabTechnician */}
                     <Route
                       path="/stock"
                       element={
-                        <ProtectedRoute allowedRoles={['Receptionist', 'Doctor', 'Admin']}>
+                        <ProtectedRoute allowedRoles={['Receptionist', 'LabTechnician', 'Admin']}>
                           <StockPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    {/* Medicines - Doctor only */}
+                    <Route
+                      path="/medicines"
+                      element={
+                        <ProtectedRoute allowedRoles={['Doctor', 'Admin']}>
+                          <MedicinesPage />
                         </ProtectedRoute>
                       }
                     />
