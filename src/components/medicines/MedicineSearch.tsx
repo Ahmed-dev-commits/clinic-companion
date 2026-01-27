@@ -58,9 +58,13 @@ export function MedicineSearch({
   }, []);
 
   const handleSelect = (medicine: StockItem) => {
-    onSelect(medicine);
-    setSearchQuery(medicine.name);
     setIsOpen(false);
+    setSearchQuery(medicine.name);
+    setFilteredMedicines([]);
+    // Use setTimeout to ensure dropdown closes before callback
+    setTimeout(() => {
+      onSelect(medicine);
+    }, 0);
   };
 
   return (
