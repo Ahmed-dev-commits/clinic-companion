@@ -23,13 +23,19 @@ export function MedicineSearch({
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [filteredMedicines, setFilteredMedicines] = useState<StockItem[]>([]);
+  const [justSelected, setJustSelected] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Filter medicines when search query changes (minimum 3 characters)
   useEffect(() => {
+    // Skip filtering if we just selected a medicine
+    if (justSelected) {
+      setJustSelected(false);
+      return;
+    }
+    
     if (searchQuery.length >= 3) {
       setIsSearching(true);
-      // Simulate search delay for UX
       const timer = setTimeout(() => {
         const filtered = stock.filter(item =>
           item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -44,7 +50,7 @@ export function MedicineSearch({
       setFilteredMedicines([]);
       setIsOpen(false);
     }
-  }, [searchQuery, stock]);
+  }, [searchQuery, stock, justSelected]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -58,13 +64,11 @@ export function MedicineSearch({
   }, []);
 
   const handleSelect = (medicine: StockItem) => {
+    setJustSelected(true);
     setIsOpen(false);
     setSearchQuery(medicine.name);
     setFilteredMedicines([]);
-    // Use setTimeout to ensure dropdown closes before callback
-    setTimeout(() => {
-      onSelect(medicine);
-    }, 0);
+    onSelect(medicine);
   };
 
   return (
