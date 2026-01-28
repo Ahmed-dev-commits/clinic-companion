@@ -24,18 +24,31 @@ function saveDemoPayments(payments: Payment[]) {
 }
 
 // Convert API DTO to local type
-function dtoToPayment(dto: PaymentDTO): Payment {
+function dtoToPayment(dto: PaymentDTO | any): Payment {
+  // Handle both SQLite and MySQL response formats
+  const parseMedicines = (med: any) => {
+    if (!med) return [];
+    if (typeof med === 'string') {
+      try {
+        return JSON.parse(med);
+      } catch {
+        return [];
+      }
+    }
+    return Array.isArray(med) ? med : [];
+  };
+
   return {
-    id: dto.ID,
-    patientId: dto.PatientID,
-    patientName: dto.PatientName,
-    consultationFee: dto.ConsultationFee,
-    labFee: dto.LabFee,
-    medicineFee: dto.MedicineFee,
-    totalAmount: dto.TotalAmount,
-    paymentMode: dto.PaymentMode as 'Cash' | 'Card',
-    medicines: typeof dto.Medicines === 'string' ? JSON.parse(dto.Medicines) : [],
-    createdAt: dto.CreatedAt,
+    id: dto.ID || dto.id,
+    patientId: dto.PatientID || dto.patientId || '',
+    patientName: dto.PatientName || dto.patientName || '',
+    consultationFee: dto.ConsultationFee || dto.consultationFee || 0,
+    labFee: dto.LabFee || dto.labFee || 0,
+    medicineFee: dto.MedicineFee || dto.medicineFee || 0,
+    totalAmount: dto.TotalAmount || dto.totalAmount || 0,
+    paymentMode: (dto.PaymentMode || dto.paymentMode || 'Cash') as 'Cash' | 'Card',
+    medicines: parseMedicines(dto.Medicines || dto.medicines),
+    createdAt: dto.CreatedAt || dto.createdAt || new Date().toISOString(),
   };
 }
 
@@ -71,7 +84,7 @@ export function usePayments() {
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       if (isCloudEnvironment()) {
         setIsCloud(true);
         const data = await supabasePaymentsApi.getAll();
@@ -104,7 +117,7 @@ export function usePayments() {
 
   const addPayment = async (paymentData: Omit<Payment, 'id' | 'createdAt'>) => {
     const id = generateId('PAY');
-    
+
     if (isCloud) {
       await supabasePaymentsApi.create({
         id,

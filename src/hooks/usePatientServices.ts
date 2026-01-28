@@ -24,15 +24,15 @@ function saveDemoServices(services: PatientServices[]) {
 }
 
 // Convert API DTO to local type
-function dtoToPatientServices(dto: PatientServicesDTO): PatientServices {
+function dtoToPatientServices(dto: PatientServicesDTO | any): PatientServices {
   return {
-    id: dto.ID,
-    patientId: dto.PatientID,
-    services: dto.Services,
-    grandTotal: dto.GrandTotal,
-    status: dto.Status as 'Draft' | 'Completed',
-    createdAt: dto.CreatedAt,
-    updatedAt: dto.UpdatedAt,
+    id: dto.ID || dto.id || '',
+    patientId: dto.PatientID || dto.patientId || '',
+    services: dto.Services || dto.services || '{}',
+    grandTotal: dto.GrandTotal || dto.grandTotal || 0,
+    status: (dto.Status || dto.status || 'Draft') as 'Draft' | 'Completed',
+    createdAt: dto.CreatedAt || dto.createdAt || new Date().toISOString(),
+    updatedAt: dto.UpdatedAt || dto.updatedAt || new Date().toISOString(),
   };
 }
 
@@ -58,7 +58,7 @@ export function usePatientServices() {
   const fetchServices = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       if (isCloudEnvironment()) {
         setIsCloud(true);
         const data = await supabasePatientServicesApi.getAll();

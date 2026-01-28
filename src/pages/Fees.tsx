@@ -23,10 +23,31 @@ export function FeesPage() {
   const { patients } = useAccessPatients();
   const { payments, loading, refetch } = usePayments();
   const { services: patientServices, loading: servicesLoading, refetch: refetchServices } = usePatientServices();
+
+  // Debug logging
+  console.log('Fees Page Data:', {
+    paymentsCount: payments?.length,
+    servicesCount: patientServices?.length,
+    patientsCount: patients?.length,
+    loading,
+    servicesLoading
+  });
+
   const [activeTab, setActiveTab] = useState('all');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [quickFilter, setQuickFilter] = useState<string>('');
+
+  // Safe date formatter to handle invalid dates
+  const safeFormatDate = (dateString: string | undefined, formatStr: string = 'MMM dd, yyyy HH:mm'): string => {
+    if (!dateString) return 'Invalid date';
+    try {
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? 'Invalid date' : format(date, formatStr);
+    } catch {
+      return 'Invalid date';
+    }
+  };
 
   // Receipt dialog states
   const [selectedService, setSelectedService] = useState<PatientServices | null>(null);
@@ -35,15 +56,23 @@ export function FeesPage() {
   const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
 
   // Filter function for date range
-  const isInDateRange = (dateString: string) => {
+  const isInDateRange = (dateString: string | undefined) => {
+    if (!dateString) return true; // If no date, include it
     if (!startDate && !endDate) return true;
-    const recordDate = new Date(dateString);
-    if (startDate && endDate) {
-      return isWithinInterval(recordDate, { start: startOfDay(startDate), end: endOfDay(endDate) });
+
+    try {
+      const recordDate = new Date(dateString);
+      if (isNaN(recordDate.getTime())) return true; // Invalid date, include it
+
+      if (startDate && endDate) {
+        return isWithinInterval(recordDate, { start: startOfDay(startDate), end: endOfDay(endDate) });
+      }
+      if (startDate) return recordDate >= startOfDay(startDate);
+      if (endDate) return recordDate <= endOfDay(endDate);
+      return true;
+    } catch {
+      return true; // On error, include the record
     }
-    if (startDate) return recordDate >= startOfDay(startDate);
-    if (endDate) return recordDate <= endOfDay(endDate);
-    return true;
   };
 
   const clearDateFilter = () => {
@@ -55,7 +84,7 @@ export function FeesPage() {
   const handleQuickFilter = (value: string) => {
     setQuickFilter(value);
     const today = new Date();
-    
+
     switch (value) {
       case 'today':
         setStartDate(startOfDay(today));
@@ -90,54 +119,65 @@ export function FeesPage() {
 
   // Merged records for "All" tab with date filtering
   const mergedRecords = useMemo(() => {
-    const paymentRecords = payments
-      .filter(p => isInDateRange(p.createdAt))
+    // Ensure we have arrays to work with
+    const safePayments = Array.isArray(payments) ? payments : [];
+    const safeServices = Array.isArray(patientServices) ? patientServices : [];
+    const safePatients = Array.isArray(patients) ? patients : [];
+
+    const paymentRecords = safePayments
+      .filter(p => p && p.createdAt && isInDateRange(p.createdAt))
       .map(p => ({
         type: 'payment' as const,
-        id: p.id,
-        patientId: p.patientId,
-        patientName: p.patientName,
-        amount: p.totalAmount,
-        date: p.createdAt,
+        id: p.id || '',
+        patientId: p.patientId || '',
+        patientName: p.patientName || 'Unknown',
+        amount: Number(p.totalAmount || 0),
+        date: p.createdAt || new Date().toISOString(),
         data: p
       }));
 
-    const serviceRecords = patientServices
-      .filter(s => isInDateRange(s.createdAt))
+    const serviceRecords = safeServices
+      .filter(s => s && s.createdAt && isInDateRange(s.createdAt))
       .map(s => {
-        const patient = patients.find(p => p.id === s.patientId);
+        const patient = safePatients.find(p => p.id === s.patientId);
         return {
           type: 'service' as const,
-          id: s.id,
-          patientId: s.patientId,
-          patientName: patient?.name || s.patientId,
-          amount: s.grandTotal,
-          date: s.createdAt,
+          id: s.id || '',
+          patientId: s.patientId || '',
+          patientName: patient?.name || s.patientId || 'Unknown',
+          amount: Number(s.grandTotal || 0),
+          date: s.createdAt || new Date().toISOString(),
           data: s
         };
       });
 
     return [...paymentRecords, ...serviceRecords]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => {
+        try {
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        } catch {
+          return 0;
+        }
+      });
   }, [payments, patientServices, patients, startDate, endDate]);
 
   // Filtered payments for Payments tab
-  const filteredPayments = useMemo(() => 
-    payments.filter(p => isInDateRange(p.createdAt)), 
-    [payments, startDate, endDate]
-  );
+  const filteredPayments = useMemo(() => {
+    const safePayments = Array.isArray(payments) ? payments : [];
+    return safePayments.filter(p => p && p.createdAt && isInDateRange(p.createdAt));
+  }, [payments, startDate, endDate]);
 
   // Filtered services for Services tab
-  const filteredServices = useMemo(() => 
-    patientServices.filter(s => isInDateRange(s.createdAt)), 
-    [patientServices, startDate, endDate]
-  );
+  const filteredServices = useMemo(() => {
+    const safeServices = Array.isArray(patientServices) ? patientServices : [];
+    return safeServices.filter(s => s && s.createdAt && isInDateRange(s.createdAt));
+  }, [patientServices, startDate, endDate]);
 
   // Today's totals (from filtered records)
   const filteredTotal = useMemo(() => {
-    const paymentTotal = filteredPayments.reduce((sum, p) => sum + p.totalAmount, 0);
-    const serviceTotal = filteredServices.reduce((sum, s) => sum + s.grandTotal, 0);
-    return paymentTotal + serviceTotal;
+    const paymentTotal = filteredPayments.reduce((sum, p) => sum + Number(p?.totalAmount || 0), 0);
+    const serviceTotal = filteredServices.reduce((sum, s) => sum + Number(s?.grandTotal || 0), 0);
+    return Number(paymentTotal + serviceTotal);
   }, [filteredPayments, filteredServices]);
 
   const handleViewPaymentReceipt = (payment: Payment) => {
@@ -178,6 +218,18 @@ export function FeesPage() {
           </div>
         }
       />
+
+      {/* Show loading state */}
+      {(loading || servicesLoading) && !payments.length && !patientServices.length ? (
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+              <p className="text-muted-foreground">Loading transaction data...</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Date Range Filter */}
       <Card className="mb-6">
@@ -270,9 +322,9 @@ export function FeesPage() {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Transaction Records</CardTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => { refetch(); refetchServices(); }}
               disabled={loading || servicesLoading}
             >
@@ -314,7 +366,7 @@ export function FeesPage() {
                         <span className="font-medium truncate">{record.patientName}</span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {format(new Date(record.date), 'MMM dd, yyyy HH:mm')}
+                        {safeFormatDate(record.date)}
                       </p>
                       {record.type === 'service' && (
                         <div className="flex flex-wrap gap-1 mt-1">
@@ -365,23 +417,23 @@ export function FeesPage() {
                     <div>
                       <p className="font-medium">{payment.patientName}</p>
                       <p className="text-sm text-muted-foreground">
-                        {format(new Date(payment.createdAt), 'MMM dd, yyyy HH:mm')}
+                        {safeFormatDate(payment.createdAt)}
                       </p>
                       <div className="flex gap-2 mt-1">
-                        {payment.consultationFee > 0 && (
-                          <Badge variant="outline" className="text-xs">Consult: Rs.{payment.consultationFee}</Badge>
+                        {Number(payment.consultationFee || 0) > 0 && (
+                          <Badge variant="outline" className="text-xs">Consult: Rs.{Number(payment.consultationFee).toFixed(2)}</Badge>
                         )}
-                        {payment.labFee > 0 && (
-                          <Badge variant="outline" className="text-xs">Lab: Rs.{payment.labFee}</Badge>
+                        {Number(payment.labFee || 0) > 0 && (
+                          <Badge variant="outline" className="text-xs">Lab: Rs.{Number(payment.labFee).toFixed(2)}</Badge>
                         )}
-                        {payment.medicineFee > 0 && (
-                          <Badge variant="outline" className="text-xs">Med: Rs.{payment.medicineFee}</Badge>
+                        {Number(payment.medicineFee || 0) > 0 && (
+                          <Badge variant="outline" className="text-xs">Med: Rs.{Number(payment.medicineFee).toFixed(2)}</Badge>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <p className="font-bold text-primary">Rs. {payment.totalAmount}</p>
+                        <p className="font-bold text-primary">Rs. {Number(payment.totalAmount || 0).toFixed(2)}</p>
                         <Badge variant={payment.paymentMode === 'Card' ? 'default' : 'secondary'}>
                           {payment.paymentMode}
                         </Badge>
@@ -406,10 +458,10 @@ export function FeesPage() {
                 <p className="text-center text-muted-foreground py-4">No service records found</p>
               ) : (
                 filteredServices.map((service) => {
-                  const servicesData: ServicesState = typeof service.services === 'string' 
-                    ? JSON.parse(service.services) 
+                  const servicesData: ServicesState = typeof service.services === 'string'
+                    ? JSON.parse(service.services)
                     : service.services as ServicesState;
-                  
+
                   const enabledServices = getEnabledServices(servicesData);
                   const patient = patients.find(p => p.id === service.patientId);
 
@@ -421,7 +473,7 @@ export function FeesPage() {
                       <div>
                         <p className="font-medium">{patient?.name || service.patientId}</p>
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(service.createdAt), 'MMM dd, yyyy HH:mm')}
+                          {safeFormatDate(service.createdAt)}
                         </p>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {enabledServices.map((s) => (
@@ -431,7 +483,7 @@ export function FeesPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <p className="font-bold text-primary">Rs. {service.grandTotal}</p>
+                          <p className="font-bold text-primary">Rs. {Number(service.grandTotal || 0).toFixed(2)}</p>
                           <Badge variant={service.status === 'Completed' ? 'default' : 'secondary'}>
                             {service.status}
                           </Badge>
@@ -461,7 +513,7 @@ export function FeesPage() {
         service={selectedService}
         patient={patients.find(p => p.id === selectedService?.patientId) || null}
       />
-      
+
       <PaymentReceiptDialog
         open={paymentReceiptOpen}
         onOpenChange={setPaymentReceiptOpen}
