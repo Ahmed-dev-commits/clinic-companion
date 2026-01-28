@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   User,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -29,6 +30,7 @@ const navItems: { path: string; label: string; icon: React.ComponentType<any>; r
   { path: '/stock', label: 'Pharmacy', icon: Package, roles: ['Receptionist', 'Admin'] },
   { path: '/prescriptions', label: 'Prescriptions', icon: FileText, roles: ['Doctor', 'Admin'] },
   { path: '/lab-results', label: 'Lab Results', icon: FlaskConical, roles: ['LabTechnician', 'Admin'] },
+  { path: '/users', label: 'User Management', icon: ShieldCheck, roles: ['Admin'] },
   { path: '/settings', label: 'Settings', icon: Settings, roles: ['Receptionist', 'Doctor', 'LabTechnician', 'Admin'] },
 ];
 
@@ -44,7 +46,7 @@ export function Sidebar() {
   };
 
   // Filter nav items based on user role
-  const filteredNavItems = navItems.filter((item) => 
+  const filteredNavItems = navItems.filter((item) =>
     user && item.roles.includes(user.role)
   );
 

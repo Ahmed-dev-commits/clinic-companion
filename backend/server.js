@@ -176,9 +176,15 @@ async function initializeDatabase() {
         Username VARCHAR(100) UNIQUE NOT NULL,
         Password VARCHAR(255) NOT NULL,
         Name VARCHAR(255) NOT NULL,
+        Email VARCHAR(255),
+        Phone VARCHAR(50),
         Role VARCHAR(50) DEFAULT 'Receptionist',
+        Permissions TEXT,
         IsActive TINYINT DEFAULT 1,
-        CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        CreatedBy VARCHAR(50),
+        CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        LastLogin DATETIME
       )
     `);
 
@@ -186,6 +192,7 @@ async function initializeDatabase() {
     const [users] = await pool.execute('SELECT COUNT(*) as count FROM Users');
     if (users[0].count === 0) {
       const defaultUsers = [
+        { id: 'USR-000', username: 'admin', password: 'admin123', name: 'System Admin', role: 'Admin' },
         { id: 'USR-001', username: 'receptionist', password: 'reception123', name: 'Front Desk', role: 'Receptionist' },
         { id: 'USR-002', username: 'doctor', password: 'doctor123', name: 'Dr. Admin', role: 'Doctor' },
         { id: 'USR-003', username: 'labtech', password: 'lab123', name: 'Lab Technician', role: 'LabTechnician' },
@@ -479,25 +486,129 @@ app.put('/api/patient-services/:id', async (req, res) => {
 
 // ============ USERS API ============
 
+// Get all users (excluding passwords)
 app.get('/api/users', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT ID, Username, Name, Role, IsActive, CreatedAt FROM Users');
-    res.json(rows);
+    const [rows] = await pool.execute(
+      'SELECT ID, Username, Name, Email, Phone, Role, Permissions, IsActive, CreatedBy, CreatedAt, UpdatedAt, LastLogin FROM Users ORDER BY CreatedAt DESC'
+    );
+    res.json(rows.map(convertRowDates));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+// Get single user by ID
+app.get('/api/users/:id', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT ID, Username, Name, Email, Phone, Role, Permissions, IsActive, CreatedBy, CreatedAt, UpdatedAt, LastLogin FROM Users WHERE ID = ?',
+      [req.params.id]
+    );
+    res.json(rows[0] ? convertRowDates(rows[0]) : null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new user
+app.post('/api/users', async (req, res) => {
+  try {
+    const { id, username, password, name, email, phone, role, permissions, createdBy } = req.body;
+    const createdAt = new Date().toISOString();
+    const permissionsJson = typeof permissions === 'string' ? permissions : JSON.stringify(permissions || []);
+
+    await pool.execute(
+      'INSERT INTO Users (ID, Username, Password, Name, Email, Phone, Role, Permissions, IsActive, CreatedBy, CreatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, username, password, name, email || null, phone || null, role || 'Receptionist', permissionsJson, 1, createdBy || null, createdAt]
+    );
+
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user
+app.put('/api/users/:id', async (req, res) => {
+  try {
+    const { username, name, email, phone, role, isActive } = req.body;
+
+    await pool.execute(
+      'UPDATE Users SET Username = ?, Name = ?, Email = ?, Phone = ?, Role = ?, IsActive = ? WHERE ID = ?',
+      [username, name, email || null, phone || null, role, isActive !== undefined ? isActive : 1, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user permissions
+app.put('/api/users/:id/permissions', async (req, res) => {
+  try {
+    const { permissions } = req.body;
+    const permissionsJson = typeof permissions === 'string' ? permissions : JSON.stringify(permissions || []);
+
+    await pool.execute(
+      'UPDATE Users SET Permissions = ? WHERE ID = ?',
+      [permissionsJson, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user password
+app.put('/api/users/:id/password', async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    await pool.execute(
+      'UPDATE Users SET Password = ? WHERE ID = ?',
+      [password, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Soft delete user (set IsActive to 0)
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    await pool.execute(
+      'UPDATE Users SET IsActive = 0 WHERE ID = ?',
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Login endpoint
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const [rows] = await pool.execute(
-      'SELECT ID, Username, Name, Role FROM Users WHERE Username = ? AND Password = ? AND IsActive = 1',
+      'SELECT ID, Username, Name, Email, Phone, Role, Permissions FROM Users WHERE Username = ? AND Password = ? AND IsActive = 1',
       [username, password]
     );
 
     if (rows.length > 0) {
-      res.json({ success: true, user: rows[0] });
+      // Update last login timestamp
+      await pool.execute(
+        'UPDATE Users SET LastLogin = ? WHERE ID = ?',
+        [new Date().toISOString(), rows[0].ID]
+      );
+
+      res.json({ success: true, user: convertRowDates(rows[0]) });
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
     }

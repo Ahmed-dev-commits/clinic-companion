@@ -12,6 +12,7 @@ import { StockPage } from "./pages/Stock";
 import { MedicinesPage } from "./pages/Medicines";
 import { PrescriptionsPage } from "./pages/Prescriptions";
 import { LabResultsPage } from "./pages/LabResults";
+import { UsersPage } from "./pages/Users";
 import { SettingsPage } from "./pages/Settings";
 import { LoginPage } from "./pages/Login";
 import { UnauthorizedPage } from "./pages/Unauthorized";
@@ -29,7 +30,7 @@ const App = () => (
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
-          
+
           {/* Protected routes */}
           <Route
             path="/*"
@@ -39,7 +40,7 @@ const App = () => (
                   <Routes>
                     {/* Dashboard - All roles */}
                     <Route path="/" element={<DashboardPage />} />
-                    
+
                     {/* Patients - Receptionist, Doctor */}
                     <Route
                       path="/patients"
@@ -49,7 +50,7 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
-                    
+
                     {/* Fees - Receptionist */}
                     <Route
                       path="/fees"
@@ -59,7 +60,7 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
-                    
+
                     {/* Pharmacy - Receptionist only */}
                     <Route
                       path="/stock"
@@ -69,7 +70,7 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
-                    
+
                     {/* Medicines - Doctor only */}
                     <Route
                       path="/medicines"
@@ -79,7 +80,7 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
-                    
+
                     {/* Prescriptions - Doctor */}
                     <Route
                       path="/prescriptions"
@@ -89,7 +90,7 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
-                    
+
                     {/* Lab Results - Lab Technician only */}
                     <Route
                       path="/lab-results"
@@ -99,7 +100,17 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
-                    
+
+                    {/* Users - Admin only */}
+                    <Route
+                      path="/users"
+                      element={
+                        <ProtectedRoute allowedRoles={['Admin']}>
+                          <UsersPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
                     {/* Settings - Admin only */}
                     <Route
                       path="/settings"
@@ -109,7 +120,7 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
-                    
+
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </MainLayout>
