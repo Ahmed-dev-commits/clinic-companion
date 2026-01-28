@@ -89,6 +89,13 @@ export function useAccessPatients() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isCloud, setIsCloud] = useState(false);
 
+  // Pagination & Search State
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [search, setSearch] = useState('');
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const fetchPatients = useCallback(async () => {
     try {
       setLoading(true);
@@ -97,20 +104,50 @@ export function useAccessPatients() {
       // Check if running in cloud environment
       if (isCloudEnvironment()) {
         setIsCloud(true);
+        // Note: Supabase implementation pending pagination update, fetching all for now
         const data = await supabasePatientsApi.getAll();
         setPatients(data.map(rowToPatient));
+        setTotal(data.length);
+        setTotalPages(1);
         setIsDemoMode(false);
       } else {
         // Try local SQLite backend
         setIsCloud(false);
         try {
-          const data = await patientsApi.getAll();
-          setPatients(data.map(dtoToPatient));
+          const response = await patientsApi.getAll({ page, limit, search });
+          // Check if response has data/meta structure (new backend) or array (old/fallback)
+          if ('data' in response && 'meta' in response) {
+            setPatients(response.data.map(dtoToPatient));
+            setTotal(response.meta.total);
+            setTotalPages(response.meta.totalPages);
+          } else if (Array.isArray(response)) {
+            // Fallback if backend is old
+            const allPatients = (response as PatientDTO[]).map(dtoToPatient);
+            setPatients(allPatients);
+            setTotal(allPatients.length);
+            setTotalPages(1);
+          }
           setIsDemoMode(false);
         } catch {
           // Fallback to demo mode
           console.log('Backend unavailable, using demo mode for patients');
-          setPatients(getDemoPatients());
+          const allDemo = getDemoPatients();
+          // Implement client-side search/pagination for demo
+          let filtered = allDemo;
+          if (search) {
+            const lowerSearch = search.toLowerCase();
+            filtered = allDemo.filter(p =>
+              p.name.toLowerCase().includes(lowerSearch) ||
+              p.id.toLowerCase().includes(lowerSearch) ||
+              p.phone.includes(lowerSearch)
+            );
+          }
+          setTotal(filtered.length);
+          setTotalPages(Math.ceil(filtered.length / limit));
+
+          const start = (page - 1) * limit;
+          setPatients(filtered.slice(start, start + limit));
+
           setIsDemoMode(true);
         }
       }
@@ -122,7 +159,7 @@ export function useAccessPatients() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, search]);
 
   useEffect(() => {
     fetchPatients();
@@ -132,7 +169,7 @@ export function useAccessPatients() {
     const id = `PAT-${Date.now().toString(36).toUpperCase()}`;
 
     if (isCloud) {
-      // Use Supabase
+      // ... (Supabase impl)
       await supabasePatientsApi.create({
         id,
         name: patientData.name,
@@ -156,9 +193,13 @@ export function useAccessPatients() {
         id,
         createdAt: new Date().toISOString(),
       };
-      const updatedPatients = [...patients, newPatient];
-      setPatients(updatedPatients);
+      const allPatients = getDemoPatients();
+      const updatedPatients = [...allPatients, newPatient];
       saveDemoPatients(updatedPatients);
+      // setPatients updated by fetchPatients refetch or manual update
+      // Logic for manual update complexity with pagination: just refetch or update if on page 1?
+      // Simpler to refetch.
+      fetchPatients();
       return id;
     }
 
@@ -179,22 +220,26 @@ export function useAccessPatients() {
       await fetchPatients();
       return id;
     } catch {
-      // Fallback to demo mode on error
+      // Fallback logic...
+      // Keep existing logic but trigger fetch
       console.log('Backend unavailable, adding patient in demo mode');
       const newPatient: Patient = {
         ...patientData,
         id,
         createdAt: new Date().toISOString(),
       };
-      const updatedPatients = [...patients, newPatient];
-      setPatients(updatedPatients);
+      const allPatients = getDemoPatients();
+      const updatedPatients = [...allPatients, newPatient];
       saveDemoPatients(updatedPatients);
       setIsDemoMode(true);
+      fetchPatients();
       return id;
     }
   };
 
   const updatePatient = async (id: string, patientData: Partial<Patient>) => {
+    // ... existing update logic ...
+    // Simplified: Just refetch after update to ensure list is correct
     if (isCloud) {
       await supabasePatientsApi.update(id, {
         name: patientData.name,
@@ -210,11 +255,12 @@ export function useAccessPatients() {
     }
 
     if (isDemoMode) {
-      const updatedPatients = patients.map(p =>
+      const allPatients = getDemoPatients();
+      const updatedPatients = allPatients.map(p =>
         p.id === id ? { ...p, ...patientData } : p
       );
-      setPatients(updatedPatients);
       saveDemoPatients(updatedPatients);
+      fetchPatients();
       return;
     }
 
@@ -230,13 +276,15 @@ export function useAccessPatients() {
       });
       await fetchPatients();
     } catch {
+      // ... fallback
       console.log('Backend unavailable, updating patient in demo mode');
-      const updatedPatients = patients.map(p =>
+      const allPatients = getDemoPatients();
+      const updatedPatients = allPatients.map(p =>
         p.id === id ? { ...p, ...patientData } : p
       );
-      setPatients(updatedPatients);
       saveDemoPatients(updatedPatients);
       setIsDemoMode(true);
+      fetchPatients();
     }
   };
 
@@ -248,9 +296,10 @@ export function useAccessPatients() {
     }
 
     if (isDemoMode) {
-      const updatedPatients = patients.filter(p => p.id !== id);
-      setPatients(updatedPatients);
+      const allPatients = getDemoPatients();
+      const updatedPatients = allPatients.filter(p => p.id !== id);
       saveDemoPatients(updatedPatients);
+      fetchPatients();
       return;
     }
 
@@ -258,11 +307,13 @@ export function useAccessPatients() {
       await patientsApi.delete(id);
       await fetchPatients();
     } catch {
+      // ...
       console.log('Backend unavailable, deleting patient in demo mode');
-      const updatedPatients = patients.filter(p => p.id !== id);
-      setPatients(updatedPatients);
+      const allPatients = getDemoPatients();
+      const updatedPatients = allPatients.filter(p => p.id !== id);
       saveDemoPatients(updatedPatients);
       setIsDemoMode(true);
+      fetchPatients();
     }
   };
 
@@ -276,5 +327,14 @@ export function useAccessPatients() {
     updatePatient,
     deletePatient,
     refetch: fetchPatients,
+    // Pagination props
+    page,
+    setPage,
+    limit,
+    setLimit,
+    search,
+    setSearch,
+    total,
+    totalPages
   };
 }

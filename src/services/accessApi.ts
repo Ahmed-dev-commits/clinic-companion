@@ -54,7 +54,14 @@ export interface PatientDTO {
 }
 
 export const patientsApi = {
-  getAll: () => apiCall<PatientDTO[]>('/patients'),
+  getAll: (params?: { page?: number; limit?: number; search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    const queryString = queryParams.toString();
+    return apiCall<{ data: PatientDTO[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(`/patients?${queryString ? `&${queryString}` : ''}`); // Note: ? is usually enough, but handling empty search
+  },
 
   getById: (id: string) => apiCall<PatientDTO | null>(`/patients/${id}`),
 

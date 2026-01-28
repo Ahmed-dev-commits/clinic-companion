@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccessPatients } from '@/hooks/useAccessPatients';
 import { usePatientServices } from '@/hooks/usePatientServices';
 import { usePayments } from '@/hooks/usePayments';
@@ -48,6 +48,7 @@ import { PatientServices } from '@/types/services';
 
 // Helper function to check if patient is "new" (registered within last 24 hours)
 const isNewPatient = (createdAt: string): boolean => {
+  if (!createdAt) return false;
   const hours = differenceInHours(new Date(), new Date(createdAt));
   return hours < 24;
 };
@@ -83,7 +84,8 @@ const getRoleDisplayText = (role?: string): string => {
 };
 
 export function PatientsPage() {
-  const { patients, loading, error, isDemoMode, isCloud, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
+  // Destructure pagination props
+  const { patients, loading, error, isDemoMode, isCloud, addPatient, updatePatient, deletePatient, refetch, page, setPage, totalPages, setSearch } = useAccessPatients();
   const { services: patientServices, addService } = usePatientServices();
   const { payments, getPatientPayments, addPayment } = usePayments();
   const { prescriptions, getPatientPrescriptions } = usePrescriptions();
@@ -98,12 +100,24 @@ export function PatientsPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [currentServices, setCurrentServices] = useState<ServicesState | null>(null);
   const [currentTotal, setCurrentTotal] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(''); // Local state for input
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newlyRegisteredPatientId, setNewlyRegisteredPatientId] = useState<string | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receiptData, setReceiptData] = useState<{ service: PatientServices; patient: Patient } | null>(null);
+
+
+
+  // Debounce effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchQuery);
+      if (searchQuery) setPage(1); // Reset to page 1 on search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, setSearch, setPage]);
+
 
   // Form state
   const [formData, setFormData] = useState({
@@ -294,16 +308,11 @@ export function PatientsPage() {
     }
   };
 
-  // Filter patients
-  const filteredPatients = patients.filter((patient) => {
-    const matchesSearch =
-      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.phone.includes(searchQuery);
-
+  // Filter patients (Client-side gender filter only)
+  // Backend handles search, so we just filter by gender on the current page data
+  const displayPatients = patients.filter((patient) => {
     const matchesGender = genderFilter === 'all' || patient.gender === genderFilter;
-
-    return matchesSearch && matchesGender;
+    return matchesGender;
   });
 
   return (
@@ -314,7 +323,7 @@ export function PatientsPage() {
         action={
           <div className="flex items-center gap-3">
             <ConnectionStatus />
-            <Button variant="outline" size="icon" onClick={refetch} disabled={loading}>
+            <Button variant="outline" size="icon" onClick={() => refetch()} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
             {hasPermission('edit_patients') && (
@@ -378,104 +387,129 @@ export function PatientsPage() {
       </div>
 
       {/* Patients Table */}
-      <div className="table-container">
+      <div className="table-container min-h-[400px]">
         {loading && patients.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">Loading patients...</span>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Patient ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Age</TableHead>
-                <TableHead>Gender</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Visit Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPatients.length === 0 ? (
+          <>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {error ? 'Unable to load patients' : 'No patients found'}
-                  </TableCell>
+                  <TableHead>Patient ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Age</TableHead>
+                  <TableHead>Gender</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Visit Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredPatients.map((patient) => (
-                  <TableRow key={patient.id}>
-                    <TableCell className="font-mono text-sm">{patient.id}</TableCell>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {patient.name}
-                        {isNewPatient(patient.createdAt) && (
-                          <Badge
-                            variant={getRoleBadgeVariant(patient.registeredByRole)}
-                            className="text-[10px] px-1.5 py-0"
-                          >
-                            New {getRoleDisplayText(patient.registeredByRole) && `• ${getRoleDisplayText(patient.registeredByRole)}`}
-                          </Badge>
-                        )}
-                      </div>
-                      {patient.registeredBy && (
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          Created by {patient.registeredBy} ({patient.registeredByRole})
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>{patient.age}</TableCell>
-                    <TableCell>{patient.gender}</TableCell>
-                    <TableCell>{patient.phone}</TableCell>
-                    <TableCell>{format(new Date(patient.visitDate), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="View History"
-                          onClick={() => handleViewHistory(patient)}
-                        >
-                          <History className="h-4 w-4" />
-                        </Button>
-                        {hasPermission('edit_patients') && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Add Services"
-                            onClick={() => handleAddServices(patient)}
-                          >
-                            <ClipboardPlus className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {hasPermission('edit_patients') && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenDialog(patient)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {hasPermission('delete_patients') && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(patient)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {displayPatients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {error ? 'Unable to load patients' : 'No patients found'}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  displayPatients.map((patient) => (
+                    <TableRow key={patient.id}>
+                      <TableCell className="font-mono text-sm">{patient.id}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {patient.name}
+                          {isNewPatient(patient.createdAt) && (
+                            <Badge
+                              variant={getRoleBadgeVariant(patient.registeredByRole)}
+                              className="text-[10px] px-1.5 py-0"
+                            >
+                              New {getRoleDisplayText(patient.registeredByRole) && `• ${getRoleDisplayText(patient.registeredByRole)}`}
+                            </Badge>
+                          )}
+                        </div>
+                        {patient.registeredBy && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Created by {patient.registeredBy} ({patient.registeredByRole})
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>{patient.age}</TableCell>
+                      <TableCell>{patient.gender}</TableCell>
+                      <TableCell>{patient.phone}</TableCell>
+                      <TableCell>{format(new Date(patient.visitDate), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="View History"
+                            onClick={() => handleViewHistory(patient)}
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                          {hasPermission('edit_patients') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Add Services"
+                              onClick={() => handleAddServices(patient)}
+                            >
+                              <ClipboardPlus className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {hasPermission('edit_patients') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenDialog(patient)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {hasPermission('delete_patients') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(patient)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-end space-x-2 py-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(page - 1)}
+                disabled={page <= 1 || loading}
+              >
+                Previous
+              </Button>
+              <div className="text-sm font-medium text-muted-foreground w-24 text-center">
+                Page {page} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(page + 1)}
+                disabled={page >= totalPages || loading}
+              >
+                Next
+              </Button>
+            </div>
+          </>
         )}
       </div>
 

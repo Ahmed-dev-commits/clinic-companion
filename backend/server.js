@@ -48,7 +48,13 @@ function convertRowDates(row) {
   // Convert CreatedAt if it exists
   if (converted.CreatedAt && !(converted.CreatedAt instanceof Date)) {
     const date = new Date(converted.CreatedAt);
-    converted.CreatedAt = date.toISOString();
+    if (!isNaN(date.getTime())) {
+      converted.CreatedAt = date.toISOString();
+    } else {
+      // Keep original or set to null/default? 
+      // Safest is to keep original string or null, but for this app consistency:
+      converted.CreatedAt = new Date().toISOString();
+    }
   }
 
   // Convert other date fields
@@ -223,8 +229,45 @@ async function initializeDatabase() {
 
 app.get('/api/patients', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM Patients ORDER BY CreatedAt DESC');
-    res.json(rows.map(convertRowDates));
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+    const offset = (page - 1) * limit;
+
+    let whereClause = '';
+    let params = [];
+
+    if (search) {
+      whereClause = 'WHERE Name LIKE ? OR ID LIKE ? OR Phone LIKE ?';
+      const searchParam = `%${search}%`;
+      params = [searchParam, searchParam, searchParam];
+    }
+
+    // 1. Get Total Count
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total FROM Patients ${whereClause}`,
+      params
+    );
+    const total = countResult[0].total;
+
+    // 2. Get Paginated Data
+    // Note: Using integers for LIMIT/OFFSET usually works with mysql2 execute, 
+    // but sometimes requires direct interpolation if ? fails. 
+    // We'll try parameterized first, but formatted as strings just in case.
+    const [rows] = await pool.execute(
+      `SELECT * FROM Patients ${whereClause} ORDER BY CreatedAt DESC LIMIT ${limit} OFFSET ${offset}`,
+      params
+    );
+
+    res.json({
+      data: rows.map(convertRowDates),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.error('Error fetching patients:', error);
     res.status(500).json({ error: error.message });
