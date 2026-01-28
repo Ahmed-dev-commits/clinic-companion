@@ -40,7 +40,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
     Admin: 'bg-purple-500',
     Doctor: 'bg-blue-500',
     Receptionist: 'bg-green-500',
-    LabTech: 'bg-orange-500',
+    LabTechnician: 'bg-orange-500',
 };
 
 const PERMISSION_LABELS: Record<Permission, string> = {
@@ -215,14 +215,14 @@ export function UsersPage() {
 
     const handleRoleChange = (role: UserRole) => {
         setFormData({ ...formData, role });
-        setSelectedPermissions(DEFAULT_PERMISSIONS[role]);
+        setSelectedPermissions(DEFAULT_PERMISSIONS[role] || []);
     };
 
     const togglePermission = (permission: Permission) => {
         setSelectedPermissions(prev =>
-            prev.includes(permission)
+            (prev || []).includes(permission)
                 ? prev.filter(p => p !== permission)
-                : [...prev, permission]
+                : [...(prev || []), permission]
         );
     };
 
@@ -376,7 +376,7 @@ export function UsersPage() {
                                         <SelectItem value="Admin">Admin</SelectItem>
                                         <SelectItem value="Doctor">Doctor</SelectItem>
                                         <SelectItem value="Receptionist">Receptionist</SelectItem>
-                                        <SelectItem value="LabTech">Lab Technician</SelectItem>
+                                        <SelectItem value="LabTechnician">Lab Technician</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -389,7 +389,7 @@ export function UsersPage() {
                                     <div key={permission} className="flex items-center space-x-2">
                                         <Checkbox
                                             id={`add-${permission}`}
-                                            checked={selectedPermissions.includes(permission)}
+                                            checked={selectedPermissions?.includes(permission)}
                                             onCheckedChange={() => togglePermission(permission)}
                                         />
                                         <Label htmlFor={`add-${permission}`} className="text-sm font-normal cursor-pointer">
@@ -465,7 +465,7 @@ export function UsersPage() {
                                     <SelectItem value="Admin">Admin</SelectItem>
                                     <SelectItem value="Doctor">Doctor</SelectItem>
                                     <SelectItem value="Receptionist">Receptionist</SelectItem>
-                                    <SelectItem value="LabTech">Lab Technician</SelectItem>
+                                    <SelectItem value="LabTechnician">Lab Technician</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -491,7 +491,7 @@ export function UsersPage() {
                                 <div key={permission} className="flex items-center space-x-2">
                                     <Checkbox
                                         id={`perm-${permission}`}
-                                        checked={selectedPermissions.includes(permission)}
+                                        checked={selectedPermissions?.includes(permission)}
                                         onCheckedChange={() => togglePermission(permission)}
                                     />
                                     <Label htmlFor={`perm-${permission}`} className="text-sm font-normal cursor-pointer">

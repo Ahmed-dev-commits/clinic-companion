@@ -60,6 +60,8 @@ function dtoToPatient(dto: PatientDTO): Patient {
     visitDate: dto.VisitDate,
     symptoms: dto.Symptoms,
     createdAt: dto.CreatedAt,
+    registeredBy: dto.CreatedBy,
+    registeredByRole: dto.CreatedByRole,
   };
 }
 
@@ -91,7 +93,7 @@ export function useAccessPatients() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Check if running in cloud environment
       if (isCloudEnvironment()) {
         setIsCloud(true);
@@ -128,7 +130,7 @@ export function useAccessPatients() {
 
   const addPatient = async (patientData: Omit<Patient, 'id' | 'createdAt'>) => {
     const id = `PAT-${Date.now().toString(36).toUpperCase()}`;
-    
+
     if (isCloud) {
       // Use Supabase
       await supabasePatientsApi.create({
@@ -146,7 +148,7 @@ export function useAccessPatients() {
       await fetchPatients();
       return id;
     }
-    
+
     if (isDemoMode) {
       // Demo mode - use local storage
       const newPatient: Patient = {
@@ -171,6 +173,8 @@ export function useAccessPatients() {
         Address: patientData.address,
         VisitDate: patientData.visitDate,
         Symptoms: patientData.symptoms,
+        CreatedBy: patientData.registeredBy,
+        CreatedByRole: patientData.registeredByRole,
       });
       await fetchPatients();
       return id;
@@ -204,9 +208,9 @@ export function useAccessPatients() {
       await fetchPatients();
       return;
     }
-    
+
     if (isDemoMode) {
-      const updatedPatients = patients.map(p => 
+      const updatedPatients = patients.map(p =>
         p.id === id ? { ...p, ...patientData } : p
       );
       setPatients(updatedPatients);
@@ -227,7 +231,7 @@ export function useAccessPatients() {
       await fetchPatients();
     } catch {
       console.log('Backend unavailable, updating patient in demo mode');
-      const updatedPatients = patients.map(p => 
+      const updatedPatients = patients.map(p =>
         p.id === id ? { ...p, ...patientData } : p
       );
       setPatients(updatedPatients);
@@ -242,7 +246,7 @@ export function useAccessPatients() {
       await fetchPatients();
       return;
     }
-    
+
     if (isDemoMode) {
       const updatedPatients = patients.filter(p => p.id !== id);
       setPatients(updatedPatients);

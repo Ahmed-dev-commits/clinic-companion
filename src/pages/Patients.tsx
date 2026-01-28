@@ -363,6 +363,11 @@ export function PatientsPage() {
                           </Badge>
                         )}
                       </div>
+                      {patient.registeredBy && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Created by {patient.registeredBy} ({patient.registeredByRole})
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>{patient.age}</TableCell>
                     <TableCell>{patient.gender}</TableCell>

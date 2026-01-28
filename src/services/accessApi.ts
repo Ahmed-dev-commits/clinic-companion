@@ -7,17 +7,31 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Helper function for API calls
+import { toast } from 'sonner';
+
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...options,
+    });
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Network error - check backend';
+    toast.error(`Connection Error: ${errorMsg}`);
+    throw error;
+  }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Network error' }));
-    throw new Error(error.error || 'API request failed');
+    const error = await response.json().catch(() => ({ error: 'Unable to parse server error' }));
+    const errorMessage = error.error || error.message || `HTTP Error ${response.status}`;
+
+    // Display toast for all backend errors
+    toast.error(`Backend Error: ${errorMessage}`);
+
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -34,14 +48,16 @@ export interface PatientDTO {
   Address: string;
   VisitDate: string;
   Symptoms: string;
+  CreatedBy?: string;
+  CreatedByRole?: string;
   CreatedAt: string;
 }
 
 export const patientsApi = {
   getAll: () => apiCall<PatientDTO[]>('/patients'),
-  
+
   getById: (id: string) => apiCall<PatientDTO | null>(`/patients/${id}`),
-  
+
   create: (patient: Omit<PatientDTO, 'CreatedAt'>) =>
     apiCall<{ success: boolean; id: string }>('/patients', {
       method: 'POST',
@@ -54,9 +70,11 @@ export const patientsApi = {
         address: patient.Address,
         visitDate: patient.VisitDate,
         symptoms: patient.Symptoms,
+        createdBy: patient.CreatedBy,
+        createdByRole: patient.CreatedByRole,
       }),
     }),
-  
+
   update: (id: string, patient: Partial<PatientDTO>) =>
     apiCall<{ success: boolean }>(`/patients/${id}`, {
       method: 'PUT',
@@ -70,7 +88,7 @@ export const patientsApi = {
         symptoms: patient.Symptoms,
       }),
     }),
-  
+
   delete: (id: string) =>
     apiCall<{ success: boolean }>(`/patients/${id}`, { method: 'DELETE' }),
 };
@@ -89,7 +107,7 @@ export interface StockDTO {
 
 export const stockApi = {
   getAll: () => apiCall<StockDTO[]>('/stock'),
-  
+
   create: (item: Omit<StockDTO, 'CreatedAt'>) =>
     apiCall<{ success: boolean; id: string }>('/stock', {
       method: 'POST',
@@ -102,7 +120,7 @@ export const stockApi = {
         lowStockThreshold: item.LowStockThreshold,
       }),
     }),
-  
+
   update: (id: string, item: Partial<StockDTO>) =>
     apiCall<{ success: boolean }>(`/stock/${id}`, {
       method: 'PUT',
@@ -114,7 +132,7 @@ export const stockApi = {
         lowStockThreshold: item.LowStockThreshold,
       }),
     }),
-  
+
   delete: (id: string) =>
     apiCall<{ success: boolean }>(`/stock/${id}`, { method: 'DELETE' }),
 };
@@ -143,7 +161,7 @@ export interface PaymentDTO {
 
 export const paymentsApi = {
   getAll: () => apiCall<PaymentDTO[]>('/payments'),
-  
+
   create: (payment: {
     id: string;
     patientId: string;
@@ -187,7 +205,7 @@ export interface PrescriptionDTO {
 
 export const prescriptionsApi = {
   getAll: () => apiCall<PrescriptionDTO[]>('/prescriptions'),
-  
+
   create: (prescription: {
     id: string;
     patientId: string;
@@ -235,7 +253,7 @@ export interface LabResultDTO {
 
 export const labResultsApi = {
   getAll: () => apiCall<LabResultDTO[]>('/lab-results'),
-  
+
   create: (labResult: {
     id: string;
     patientId: string;
@@ -252,7 +270,7 @@ export const labResultsApi = {
       method: 'POST',
       body: JSON.stringify(labResult),
     }),
-  
+
   updateStatus: (id: string, status: string, notifiedAt?: string, collectedAt?: string) =>
     apiCall<{ success: boolean }>(`/lab-results/${id}/status`, {
       method: 'PUT',
@@ -262,7 +280,7 @@ export const labResultsApi = {
 
 // ============ HEALTH CHECK ============
 
-export const healthCheck = () => 
+export const healthCheck = () =>
   apiCall<{ status: string; database: string; timestamp: string }>('/health');
 
 // ============ PATIENT SERVICES API ============
@@ -279,10 +297,10 @@ export interface PatientServicesDTO {
 
 export const patientServicesApi = {
   getAll: () => apiCall<PatientServicesDTO[]>('/patient-services'),
-  
-  getByPatientId: (patientId: string) => 
+
+  getByPatientId: (patientId: string) =>
     apiCall<PatientServicesDTO[]>(`/patient-services/${patientId}`),
-  
+
   create: (service: {
     id: string;
     patientId: string;
@@ -294,7 +312,7 @@ export const patientServicesApi = {
       method: 'POST',
       body: JSON.stringify(service),
     }),
-  
+
   update: (id: string, service: { services: any; grandTotal: number; status: string }) =>
     apiCall<{ success: boolean }>(`/patient-services/${id}`, {
       method: 'PUT',
@@ -315,7 +333,7 @@ export interface UserDTO {
 
 export const usersApi = {
   getAll: () => apiCall<UserDTO[]>('/users'),
-  
+
   login: (username: string, password: string) =>
     apiCall<{ success: boolean; user: UserDTO }>('/users/login', {
       method: 'POST',

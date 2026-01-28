@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 
 // ============ PATIENTS API ============
@@ -28,7 +29,10 @@ export const supabasePatientsApi = {
       .from('patients')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data || [];
   },
 
@@ -38,7 +42,10 @@ export const supabasePatientsApi = {
       .select('*')
       .eq('id', id)
       .maybeSingle();
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data;
   },
 
@@ -46,7 +53,10 @@ export const supabasePatientsApi = {
     const { error } = await supabase
       .from('patients')
       .insert([patient]);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return patient.id;
   },
 
@@ -55,7 +65,10 @@ export const supabasePatientsApi = {
       .from('patients')
       .update(patient)
       .eq('id', id);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
   },
 
   delete: async (id: string): Promise<void> => {
@@ -63,7 +76,10 @@ export const supabasePatientsApi = {
       .from('patients')
       .delete()
       .eq('id', id);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
   },
 };
 
@@ -85,7 +101,10 @@ export const supabaseStockApi = {
       .from('stock')
       .select('*')
       .order('name');
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data || [];
   },
 
@@ -93,7 +112,10 @@ export const supabaseStockApi = {
     const { error } = await supabase
       .from('stock')
       .insert([item]);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return item.id;
   },
 
@@ -102,7 +124,10 @@ export const supabaseStockApi = {
       .from('stock')
       .update(item)
       .eq('id', id);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
   },
 
   delete: async (id: string): Promise<void> => {
@@ -110,7 +135,10 @@ export const supabaseStockApi = {
       .from('stock')
       .delete()
       .eq('id', id);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
   },
 };
 
@@ -135,7 +163,10 @@ export const supabasePaymentsApi = {
       .from('payments')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data || [];
   },
 
@@ -143,7 +174,10 @@ export const supabasePaymentsApi = {
     const { error } = await supabase
       .from('payments')
       .insert([payment]);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return payment.id;
   },
 };
@@ -171,7 +205,10 @@ export const supabasePrescriptionsApi = {
       .from('prescriptions')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data || [];
   },
 
@@ -179,7 +216,10 @@ export const supabasePrescriptionsApi = {
     const { error } = await supabase
       .from('prescriptions')
       .insert([prescription]);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return prescription.id;
   },
 };
@@ -208,7 +248,10 @@ export const supabaseLabResultsApi = {
       .from('lab_results')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data || [];
   },
 
@@ -216,7 +259,10 @@ export const supabaseLabResultsApi = {
     const { error } = await supabase
       .from('lab_results')
       .insert([labResult]);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return labResult.id;
   },
 
@@ -229,7 +275,10 @@ export const supabaseLabResultsApi = {
       .from('lab_results')
       .update(updateData)
       .eq('id', id);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
   },
 };
 
@@ -251,7 +300,10 @@ export const supabasePatientServicesApi = {
       .from('patient_services')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data || [];
   },
 
@@ -261,7 +313,10 @@ export const supabasePatientServicesApi = {
       .select('*')
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data || [];
   },
 
@@ -269,7 +324,10 @@ export const supabasePatientServicesApi = {
     const { error } = await supabase
       .from('patient_services')
       .insert([service]);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return service.id;
   },
 
@@ -278,7 +336,10 @@ export const supabasePatientServicesApi = {
       .from('patient_services')
       .update({ ...service, updated_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
   },
 };
 
@@ -299,7 +360,10 @@ export const supabaseUsersApi = {
     const { data, error } = await supabase
       .from('users')
       .select('id, username, name, role, is_active, created_at');
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return (data || []) as UserRow[];
   },
 
@@ -311,7 +375,10 @@ export const supabaseUsersApi = {
       .eq('password', password)
       .eq('is_active', true)
       .maybeSingle();
-    if (error) throw error;
+    if (error) {
+      toast.error(`Database Error: ${error.message}`);
+      throw error;
+    }
     return data;
   },
 };

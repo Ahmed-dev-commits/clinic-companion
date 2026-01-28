@@ -86,9 +86,15 @@ async function initializeDatabase() {
         Address TEXT,
         VisitDate VARCHAR(50),
         Symptoms TEXT,
+        CreatedBy VARCHAR(100),
+        CreatedByRole VARCHAR(50),
         CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Attempt to add new columns if they don't exist (migration)
+    try { await pool.execute("ALTER TABLE Patients ADD COLUMN CreatedBy VARCHAR(100)"); } catch (e) { }
+    try { await pool.execute("ALTER TABLE Patients ADD COLUMN CreatedByRole VARCHAR(50)"); } catch (e) { }
 
     // Stock table
     await pool.execute(`
@@ -236,12 +242,12 @@ app.get('/api/patients/:id', async (req, res) => {
 
 app.post('/api/patients', async (req, res) => {
   try {
-    const { id, name, age, gender, phone, address, visitDate, symptoms } = req.body;
+    const { id, name, age, gender, phone, address, visitDate, symptoms, createdBy, createdByRole } = req.body;
     const createdAt = new Date().toISOString();
 
     await pool.execute(
-      'INSERT INTO Patients (ID, Name, Age, Gender, Phone, Address, VisitDate, Symptoms, CreatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, name, age, gender, phone, address, visitDate, symptoms, createdAt]
+      'INSERT INTO Patients (ID, Name, Age, Gender, Phone, Address, VisitDate, Symptoms, CreatedBy, CreatedByRole, CreatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, name, age, gender, phone, address, visitDate, symptoms, createdBy, createdByRole, createdAt]
     );
 
     res.json({ success: true, id });

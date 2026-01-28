@@ -1,4 +1,4 @@
-export type UserRole = 'Admin' | 'Doctor' | 'Receptionist' | 'LabTech';
+export type UserRole = 'Admin' | 'Doctor' | 'Receptionist' | 'LabTechnician';
 
 export type Permission =
     | 'view_patients'
@@ -77,7 +77,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, Permission[]> = {
         'create_payments',
         'manage_stock',
     ],
-    LabTech: [
+    LabTechnician: [
         'view_patients',
         'view_lab_results',
         'edit_lab_results',

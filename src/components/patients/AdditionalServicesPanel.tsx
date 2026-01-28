@@ -29,13 +29,13 @@ import {
   CreditCard,
   Pill,
 } from 'lucide-react';
-import { 
-  createEmptyServices, 
-  ServicesState, 
-  ConsultationType, 
-  UltrasoundType, 
-  ECGType, 
-  InjectionType, 
+import {
+  createEmptyServices,
+  ServicesState,
+  ConsultationType,
+  UltrasoundType,
+  ECGType,
+  InjectionType,
   SurgeryType,
   MedicineEntry,
 } from '@/types/services';
@@ -61,7 +61,8 @@ export function AdditionalServicesPanel({
   const [services, setServices] = useState<ServicesState>(createEmptyServices);
   const { stock, reduceStock } = useStock();
   const { addPayment } = usePayments();
-  
+  const [localSubmitting, setLocalSubmitting] = useState(false);
+
   // Medicine selection state
   const [selectedStockId, setSelectedStockId] = useState('');
   const [medicineQuantity, setMedicineQuantity] = useState('1');
@@ -163,7 +164,7 @@ export function AdditionalServicesPanel({
 
     const currentMedicines = services.feeCollection.medicines;
     const existingIndex = currentMedicines.findIndex(m => m.stockId === selectedStockId);
-    
+
     if (existingIndex >= 0) {
       const newQty = currentMedicines[existingIndex].quantity + qty;
       if (newQty > stockItem.quantity) {
@@ -193,29 +194,82 @@ export function AdditionalServicesPanel({
   };
 
   const handleSave = async () => {
+    if (localSubmitting || isSubmitting) return;
+    setLocalSubmitting(true);
+
     try {
-      // Reduce stock for medicines
-      for (const m of services.feeCollection.medicines) {
-        await reduceStock(m.stockId, m.quantity);
+      // Validation
+      if (services.consultation.enabled) {
+        if (!services.consultation.doctorName || !services.consultation.fee) {
+          toast.error('Consultation: Doctor Name and Fee are required');
+          return;
+        }
+      }
+      if (services.ultrasound.enabled) {
+        if (!services.ultrasound.charges) {
+          toast.error('Ultrasound: Charges are required');
+          return;
+        }
+      }
+      if (services.ecg.enabled) {
+        if (!services.ecg.charges) {
+          toast.error('ECG: Charges are required');
+          return;
+        }
+      }
+      if (services.bpReading.enabled) {
+        if (!services.bpReading.systolic || !services.bpReading.diastolic || !services.bpReading.pulse) {
+          toast.error('BP Reading: All values are required');
+          return;
+        }
+      }
+      if (services.injection.enabled) {
+        if (!services.injection.name || !services.injection.quantity || !services.injection.charges) {
+          toast.error('Injection: Name, Quantity and Charges are required');
+          return;
+        }
+      }
+      if (services.retention.enabled) {
+        if (!services.retention.duration || !services.retention.charges) {
+          toast.error('Retention: Duration and Charges are required');
+          return;
+        }
+      }
+      if (services.surgery.enabled) {
+        if (!services.surgery.surgeonName || !services.surgery.surgeryDate ||
+          (!services.surgery.operationCharges && !services.surgery.otCharges && !services.surgery.anesthesiaCharges)) {
+          toast.error('Surgery: Surgeon, Date and at least one charge are required');
+          return;
+        }
       }
 
-      // Create payment record if there are fees
-      if (grandTotal > 0) {
-        await addPayment({
-          patientId,
-          patientName,
-          consultationFee: services.consultation.enabled ? services.consultation.fee : 0,
-          labFee: services.feeCollection.labFee,
-          medicineFee,
-          totalAmount: grandTotal,
-          paymentMode: services.feeCollection.paymentMode,
-          medicines: services.feeCollection.medicines,
-        });
-      }
+      try {
+        // Reduce stock for medicines
+        for (const m of services.feeCollection.medicines) {
+          await reduceStock(m.stockId, m.quantity);
+        }
 
-      await onSave(services, grandTotal);
-    } catch (err) {
-      toast.error('Failed to save services');
+        // Create payment record if there are fees
+        if (grandTotal > 0) {
+          await addPayment({
+            patientId,
+            patientName,
+            consultationFee: services.consultation.enabled ? services.consultation.fee : 0,
+            labFee: services.feeCollection.labFee,
+            medicineFee: medicineFee,
+            totalAmount: grandTotal,
+            paymentMode: services.feeCollection.paymentMode,
+            medicines: services.feeCollection.medicines,
+          });
+        }
+
+        await onSave(services, grandTotal);
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to save services');
+      }
+    } finally {
+      setLocalSubmitting(false);
     }
   };
 
@@ -786,7 +840,7 @@ export function AdditionalServicesPanel({
             <FileText className="mr-2 h-4 w-4" />
             View Summary
           </Button>
-          <Button onClick={handleSave} disabled={isSubmitting}>
+          <Button onClick={handleSave} disabled={isSubmitting || localSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />
             Save & Record Payment
