@@ -1,18 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useAccessPatients } from '@/hooks/useAccessPatients';
 import { usePayments } from '@/hooks/usePayments';
-import { usePatientServices } from '@/hooks/usePatientServices';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Printer, RefreshCw, FileText, CreditCard, CalendarIcon, X } from 'lucide-react';
+import { Printer, RefreshCw, X, CalendarIcon } from 'lucide-react';
 import { format, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
-import { ServicesState, PatientServices } from '@/types/services';
 import { Payment } from '@/types/hospital';
-import { ServiceReceiptDialog } from '@/components/fees/ServiceReceiptDialog';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,25 +16,21 @@ import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export function FeesPage() {
-  const { patients } = useAccessPatients();
   const { payments, loading, refetch } = usePayments();
-  const { services: patientServices, loading: servicesLoading, refetch: refetchServices } = usePatientServices();
+  const { patients } = useAccessPatients();
 
   // Debug logging
   console.log('Fees Page Data:', {
     paymentsCount: payments?.length,
-    servicesCount: patientServices?.length,
     patientsCount: patients?.length,
-    loading,
-    servicesLoading
+    loading
   });
 
-  const [activeTab, setActiveTab] = useState('all');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [quickFilter, setQuickFilter] = useState<string>('');
 
-  // Safe date formatter to handle invalid dates
+  // Safe date formatter
   const safeFormatDate = (dateString: string | undefined, formatStr: string = 'MMM dd, yyyy HH:mm'): string => {
     if (!dateString) return 'Invalid date';
     try {
@@ -50,19 +42,17 @@ export function FeesPage() {
   };
 
   // Receipt dialog states
-  const [selectedService, setSelectedService] = useState<PatientServices | null>(null);
-  const [serviceReceiptOpen, setServiceReceiptOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
 
   // Filter function for date range
   const isInDateRange = (dateString: string | undefined) => {
-    if (!dateString) return true; // If no date, include it
+    if (!dateString) return true;
     if (!startDate && !endDate) return true;
 
     try {
       const recordDate = new Date(dateString);
-      if (isNaN(recordDate.getTime())) return true; // Invalid date, include it
+      if (isNaN(recordDate.getTime())) return true;
 
       if (startDate && endDate) {
         return isWithinInterval(recordDate, { start: startOfDay(startDate), end: endOfDay(endDate) });
@@ -71,7 +61,7 @@ export function FeesPage() {
       if (endDate) return recordDate <= endOfDay(endDate);
       return true;
     } catch {
-      return true; // On error, include the record
+      return true;
     }
   };
 
@@ -109,7 +99,7 @@ export function FeesPage() {
   };
 
   const handleManualDateChange = (type: 'start' | 'end', date: Date | undefined) => {
-    setQuickFilter(''); // Clear quick filter when manually selecting dates
+    setQuickFilter('');
     if (type === 'start') {
       setStartDate(date);
     } else {
@@ -117,91 +107,20 @@ export function FeesPage() {
     }
   };
 
-  // Merged records for "All" tab with date filtering
-  const mergedRecords = useMemo(() => {
-    // Ensure we have arrays to work with
-    const safePayments = Array.isArray(payments) ? payments : [];
-    const safeServices = Array.isArray(patientServices) ? patientServices : [];
-    const safePatients = Array.isArray(patients) ? patients : [];
-
-    const paymentRecords = safePayments
-      .filter(p => p && p.createdAt && isInDateRange(p.createdAt))
-      .map(p => ({
-        type: 'payment' as const,
-        id: p.id || '',
-        patientId: p.patientId || '',
-        patientName: p.patientName || 'Unknown',
-        amount: Number(p.totalAmount || 0),
-        date: p.createdAt || new Date().toISOString(),
-        data: p
-      }));
-
-    const serviceRecords = safeServices
-      .filter(s => s && s.createdAt && isInDateRange(s.createdAt))
-      .map(s => {
-        const patient = safePatients.find(p => p.id === s.patientId);
-        return {
-          type: 'service' as const,
-          id: s.id || '',
-          patientId: s.patientId || '',
-          patientName: patient?.name || s.patientId || 'Unknown',
-          amount: Number(s.grandTotal || 0),
-          date: s.createdAt || new Date().toISOString(),
-          data: s
-        };
-      });
-
-    return [...paymentRecords, ...serviceRecords]
-      .sort((a, b) => {
-        try {
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-        } catch {
-          return 0;
-        }
-      });
-  }, [payments, patientServices, patients, startDate, endDate]);
-
-  // Filtered payments for Payments tab
+  // Filtered payments
   const filteredPayments = useMemo(() => {
     const safePayments = Array.isArray(payments) ? payments : [];
     return safePayments.filter(p => p && p.createdAt && isInDateRange(p.createdAt));
   }, [payments, startDate, endDate]);
 
-  // Filtered services for Services tab
-  const filteredServices = useMemo(() => {
-    const safeServices = Array.isArray(patientServices) ? patientServices : [];
-    return safeServices.filter(s => s && s.createdAt && isInDateRange(s.createdAt));
-  }, [patientServices, startDate, endDate]);
-
-  // Today's totals (from filtered records)
+  // Total Collection
   const filteredTotal = useMemo(() => {
-    const paymentTotal = filteredPayments.reduce((sum, p) => sum + Number(p?.totalAmount || 0), 0);
-    const serviceTotal = filteredServices.reduce((sum, s) => sum + Number(s?.grandTotal || 0), 0);
-    return Number(paymentTotal + serviceTotal);
-  }, [filteredPayments, filteredServices]);
+    return filteredPayments.reduce((sum, p) => sum + Number(p?.totalAmount || 0), 0);
+  }, [filteredPayments]);
 
   const handleViewPaymentReceipt = (payment: Payment) => {
     setSelectedPayment(payment);
     setPaymentReceiptOpen(true);
-  };
-
-  const handleViewServiceReceipt = (service: PatientServices) => {
-    setSelectedService(service);
-    setServiceReceiptOpen(true);
-  };
-
-  const getEnabledServices = (servicesData: ServicesState): string[] => {
-    const enabled: string[] = [];
-    if (servicesData?.consultation?.enabled) enabled.push('Consultation');
-    if (servicesData?.ultrasound?.enabled) enabled.push('Ultrasound');
-    if (servicesData?.ecg?.enabled) enabled.push('ECG');
-    if (servicesData?.bpReading?.enabled) enabled.push('BP');
-    if (servicesData?.injection?.enabled) enabled.push('Injection');
-    if (servicesData?.retention?.enabled) enabled.push('Retention');
-    if (servicesData?.surgery?.enabled) enabled.push('Surgery');
-    if (servicesData?.feeCollection?.labFee > 0) enabled.push('Lab Fee');
-    if (servicesData?.feeCollection?.medicines?.length > 0) enabled.push('Medicines');
-    return enabled;
   };
 
   return (
@@ -212,15 +131,15 @@ export function FeesPage() {
         action={
           <div className="flex items-center gap-3">
             <ConnectionStatus />
-            <Button variant="outline" size="icon" onClick={() => { refetch(); refetchServices(); }} disabled={loading || servicesLoading}>
-              <RefreshCw className={`h-4 w-4 ${(loading || servicesLoading) ? 'animate-spin' : ''}`} />
+            <Button variant="outline" size="icon" onClick={() => refetch()} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         }
       />
 
       {/* Show loading state */}
-      {(loading || servicesLoading) && !payments.length && !patientServices.length ? (
+      {loading && !payments.length ? (
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex items-center justify-center py-8">
@@ -288,7 +207,7 @@ export function FeesPage() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3 mb-6">
+      <div className="grid gap-4 md:grid-cols-2 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -301,23 +220,15 @@ export function FeesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Payments</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Transactions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{filteredPayments.length}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Services</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{filteredServices.length}</div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* All Records with Tabs */}
+      {/* Transaction Records Table */}
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -325,194 +236,62 @@ export function FeesPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => { refetch(); refetchServices(); }}
-              disabled={loading || servicesLoading}
+              onClick={() => refetch()}
+              disabled={loading}
             >
-              <RefreshCw className={`h-4 w-4 ${(loading || servicesLoading) ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="all" className="text-xs">
-                All ({mergedRecords.length})
-              </TabsTrigger>
-              <TabsTrigger value="payments" className="flex items-center gap-1 text-xs">
-                <CreditCard className="h-3 w-3" />
-                Payments ({filteredPayments.length})
-              </TabsTrigger>
-              <TabsTrigger value="services" className="flex items-center gap-1 text-xs">
-                <FileText className="h-3 w-3" />
-                Services ({filteredServices.length})
-              </TabsTrigger>
-            </TabsList>
-
-            {/* All Records Tab */}
-            <TabsContent value="all" className="space-y-3 max-h-[500px] overflow-y-auto">
-              {mergedRecords.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">No records found</p>
-              ) : (
-                mergedRecords.map((record) => (
-                  <div
-                    key={record.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant={record.type === 'payment' ? 'default' : 'secondary'} className="text-xs">
-                          {record.type === 'payment' ? 'Payment' : 'Service'}
-                        </Badge>
-                        <span className="font-medium truncate">{record.patientName}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {safeFormatDate(record.date)}
-                      </p>
-                      {record.type === 'service' && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {(() => {
-                            const svc = (record.data as PatientServices).services;
-                            const parsed: ServicesState = typeof svc === 'string' ? JSON.parse(svc) : svc as unknown as ServicesState;
-                            return getEnabledServices(parsed).slice(0, 3).map((s) => (
-                              <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
-                            ));
-                          })()}
-                        </div>
+          <div className="space-y-3 max-h-[500px] overflow-y-auto">
+            {filteredPayments.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">No payment records found</p>
+            ) : (
+              filteredPayments.map((payment) => (
+                <div
+                  key={payment.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <div>
+                    <p className="font-medium">{payment.patientName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {safeFormatDate(payment.createdAt)}
+                    </p>
+                    <div className="flex gap-2 mt-1">
+                      {Number(payment.consultationFee || 0) > 0 && (
+                        <Badge variant="outline" className="text-xs">Consult: Rs.{Number(payment.consultationFee).toFixed(2)}</Badge>
+                      )}
+                      {Number(payment.labFee || 0) > 0 && (
+                        <Badge variant="outline" className="text-xs">Lab: Rs.{Number(payment.labFee).toFixed(2)}</Badge>
+                      )}
+                      {Number(payment.medicineFee || 0) > 0 && (
+                        <Badge variant="outline" className="text-xs">Med: Rs.{Number(payment.medicineFee).toFixed(2)}</Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="font-bold text-primary">Rs. {record.amount.toFixed(2)}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (record.type === 'payment') {
-                            handleViewPaymentReceipt(record.data as Payment);
-                          } else {
-                            handleViewServiceReceipt(record.data as PatientServices);
-                          }
-                        }}
-                        title="View Receipt"
-                      >
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                    </div>
                   </div>
-                ))
-              )}
-            </TabsContent>
-
-            {/* Payments Tab */}
-            <TabsContent value="payments" className="space-y-3 max-h-[500px] overflow-y-auto">
-              {filteredPayments.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">No payment records found</p>
-              ) : (
-                filteredPayments.map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">{payment.patientName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {safeFormatDate(payment.createdAt)}
-                      </p>
-                      <div className="flex gap-2 mt-1">
-                        {Number(payment.consultationFee || 0) > 0 && (
-                          <Badge variant="outline" className="text-xs">Consult: Rs.{Number(payment.consultationFee).toFixed(2)}</Badge>
-                        )}
-                        {Number(payment.labFee || 0) > 0 && (
-                          <Badge variant="outline" className="text-xs">Lab: Rs.{Number(payment.labFee).toFixed(2)}</Badge>
-                        )}
-                        {Number(payment.medicineFee || 0) > 0 && (
-                          <Badge variant="outline" className="text-xs">Med: Rs.{Number(payment.medicineFee).toFixed(2)}</Badge>
-                        )}
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-bold text-primary">Rs. {Number(payment.totalAmount || 0).toFixed(2)}</p>
+                      <Badge variant={payment.paymentMode === 'Card' ? 'default' : 'secondary'}>
+                        {payment.paymentMode}
+                      </Badge>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="font-bold text-primary">Rs. {Number(payment.totalAmount || 0).toFixed(2)}</p>
-                        <Badge variant={payment.paymentMode === 'Card' ? 'default' : 'secondary'}>
-                          {payment.paymentMode}
-                        </Badge>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewPaymentReceipt(payment)}
-                        title="View Receipt"
-                      >
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </TabsContent>
-
-            {/* Services Tab */}
-            <TabsContent value="services" className="space-y-3 max-h-[500px] overflow-y-auto">
-              {filteredServices.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">No service records found</p>
-              ) : (
-                filteredServices.map((service) => {
-                  const servicesData: ServicesState = typeof service.services === 'string'
-                    ? JSON.parse(service.services)
-                    : service.services as ServicesState;
-
-                  const enabledServices = getEnabledServices(servicesData);
-                  const patient = patients.find(p => p.id === service.patientId);
-
-                  return (
-                    <div
-                      key={service.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleViewPaymentReceipt(payment)}
+                      title="View Receipt"
                     >
-                      <div>
-                        <p className="font-medium">{patient?.name || service.patientId}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {safeFormatDate(service.createdAt)}
-                        </p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {enabledServices.map((s) => (
-                            <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <p className="font-bold text-primary">Rs. {Number(service.grandTotal || 0).toFixed(2)}</p>
-                          <Badge variant={service.status === 'Completed' ? 'default' : 'secondary'}>
-                            {service.status}
-                          </Badge>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewServiceReceipt(service)}
-                          title="View Receipt"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </TabsContent>
-          </Tabs>
+                      <Printer className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
-
-      {/* Receipt Dialogs */}
-      <ServiceReceiptDialog
-        open={serviceReceiptOpen}
-        onOpenChange={setServiceReceiptOpen}
-        service={selectedService}
-        patient={patients.find(p => p.id === selectedService?.patientId) || null}
-      />
 
       <PaymentReceiptDialog
         open={paymentReceiptOpen}

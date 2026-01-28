@@ -42,7 +42,9 @@ import { format, differenceInHours } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { AdditionalServicesPanel } from '@/components/patients/AdditionalServicesPanel';
 import { ServicesSummaryDialog } from '@/components/patients/ServicesSummaryDialog';
+import { ServiceReceiptDialog } from '@/components/fees/ServiceReceiptDialog';
 import { PatientHistoryDialog } from '@/components/patients/PatientHistoryDialog';
+import { PatientServices } from '@/types/services';
 
 // Helper function to check if patient is "new" (registered within last 24 hours)
 const isNewPatient = (createdAt: string): boolean => {
@@ -83,7 +85,7 @@ const getRoleDisplayText = (role?: string): string => {
 export function PatientsPage() {
   const { patients, loading, error, isDemoMode, isCloud, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
   const { services: patientServices, addService } = usePatientServices();
-  const { payments, getPatientPayments } = usePayments();
+  const { payments, getPatientPayments, addPayment } = usePayments();
   const { prescriptions, getPatientPrescriptions } = usePrescriptions();
   const { labResults, getPatientLabResults } = useLabResults();
   const { user, hasPermission } = useAuthStore();
@@ -99,6 +101,9 @@ export function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newlyRegisteredPatientId, setNewlyRegisteredPatientId] = useState<string | null>(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState<{ service: PatientServices; patient: Patient } | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -183,6 +188,7 @@ export function PatientsPage() {
           id,
           createdAt: new Date().toISOString(),
         };
+        setNewlyRegisteredPatientId(id);
         setSelectedPatient(newPatient);
         setIsDialogOpen(false);
         setIsServicesDialogOpen(true);
@@ -204,8 +210,43 @@ export function PatientsPage() {
 
     try {
       setIsSubmitting(true);
-      await addService(selectedPatient.id, services, grandTotal);
-      toast.success('Services saved successfully!');
+      // 1. Save Service Record
+      const serviceId = await addService(selectedPatient.id, services, grandTotal);
+
+      // 2. Create Payment Record (only if there are charges)
+      if (grandTotal > 0) {
+        const medicineFee = services.feeCollection.medicines.reduce((sum, m) => sum + m.price * m.quantity, 0);
+
+        await addPayment({
+          patientId: selectedPatient.id,
+          patientName: selectedPatient.name,
+          consultationFee: services.consultation.enabled ? services.consultation.fee : 0,
+          labFee: services.feeCollection.labFee,
+          medicineFee: medicineFee,
+          totalAmount: grandTotal,
+          paymentMode: services.feeCollection.paymentMode,
+          medicines: services.feeCollection.medicines,
+        });
+      }
+
+      toast.success('Services and Payment saved successfully!');
+
+      // Prepare receipt data
+      setReceiptData({
+        service: {
+          id: serviceId,
+          patientId: selectedPatient.id,
+          services: JSON.stringify(services), // Pass as string to match type
+          grandTotal: grandTotal,
+          status: 'Completed',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        patient: selectedPatient
+      });
+      setIsReceiptOpen(true);
+
+      setNewlyRegisteredPatientId(null);
       setIsServicesDialogOpen(false);
       setSelectedPatient(null);
     } catch (err) {
@@ -234,6 +275,22 @@ export function PatientsPage() {
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to delete patient');
       }
+    }
+  };
+
+  const handleServicesDialogChange = (open: boolean) => {
+    if (!open) {
+      // If closing and we have a new patient pending services
+      if (newlyRegisteredPatientId && selectedPatient?.id === newlyRegisteredPatientId) {
+        // Rollback: delete the incomplete patient record
+        deletePatient(newlyRegisteredPatientId).catch(console.error);
+        toast.info('Registration cancelled - Patient removed as no service was selected');
+        setNewlyRegisteredPatientId(null);
+      }
+      setIsServicesDialogOpen(false);
+      setSelectedPatient(null);
+    } else {
+      setIsServicesDialogOpen(true);
     }
   };
 
@@ -536,7 +593,7 @@ export function PatientsPage() {
       </Dialog>
 
       {/* Additional Services Dialog */}
-      <Dialog open={isServicesDialogOpen} onOpenChange={setIsServicesDialogOpen}>
+      <Dialog open={isServicesDialogOpen} onOpenChange={handleServicesDialogChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Additional Services</DialogTitle>
@@ -583,6 +640,13 @@ export function PatientsPage() {
           />
         )
       }
+      {/* Service Receipt Dialog */}
+      <ServiceReceiptDialog
+        open={isReceiptOpen}
+        onOpenChange={setIsReceiptOpen}
+        service={receiptData?.service || null}
+        patient={receiptData?.patient || null}
+      />
     </div >
   );
 }

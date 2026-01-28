@@ -21,9 +21,9 @@ const numberToWords = (num: number): string => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
     'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  
+
   if (num === 0) return 'Zero';
-  
+
   const convert = (n: number): string => {
     if (n < 20) return ones[n];
     if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
@@ -32,7 +32,7 @@ const numberToWords = (num: number): string => {
     if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
     return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
   };
-  
+
   return convert(Math.floor(num));
 };
 
@@ -42,8 +42,8 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
 
   if (!service || !patient) return null;
 
-  const servicesData: ServicesState = typeof service.services === 'string' 
-    ? JSON.parse(service.services) 
+  const servicesData: ServicesState = typeof service.services === 'string'
+    ? JSON.parse(service.services)
     : service.services as ServicesState;
 
   const handlePrint = () => {
@@ -61,18 +61,18 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
-    
+
     doc.setProperties({
       title: `Service-Receipt-${service.id}`,
       subject: 'Service Receipt',
       author: settings.clinicName,
       creator: settings.clinicName
     });
-    
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
     const contentWidth = pageWidth - 2 * margin;
-    
+
     const primaryColor: [number, number, number] = [26, 86, 219];
     const textColor: [number, number, number] = [30, 30, 30];
     const mutedColor: [number, number, number] = [100, 100, 100];
@@ -98,19 +98,19 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
       doc.setFont('helvetica', 'bold');
       doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
     }
-    
+
     doc.setTextColor(...primaryColor);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(settings.clinicName, margin + 30, 18);
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(settings.address, margin + 30, 24);
     doc.text(settings.city, margin + 30, 29);
     doc.text(`Phone: ${settings.phone} | Email: ${settings.email}`, margin + 30, 34);
-    
+
     // Title
     doc.setTextColor(...primaryColor);
     doc.setFontSize(14);
@@ -121,40 +121,40 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
     doc.setFont('helvetica', 'normal');
     doc.text(`Receipt No: ${service.id}`, pageWidth - margin, 25, { align: 'right' });
     doc.text(`Date: ${format(new Date(service.createdAt), 'dd MMM yyyy')}`, pageWidth - margin, 30, { align: 'right' });
-    
+
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.8);
     doc.line(margin, 40, pageWidth - margin, 40);
-    
+
     // Patient Info Box
     let yPos = 48;
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, yPos, contentWidth, 20, 2, 2, 'S');
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
     doc.text('Patient Name:', margin + 4, yPos + 7);
     doc.text('Age / Gender:', margin + 4, yPos + 14);
-    
+
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.text(patient.name, margin + 28, yPos + 7);
     doc.setFont('helvetica', 'normal');
     doc.text(`${patient.age} years / ${patient.gender}`, margin + 28, yPos + 14);
-    
+
     const rightCol = pageWidth / 2 + 10;
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
     doc.text('Patient ID:', rightCol, yPos + 7);
     doc.text('Contact:', rightCol, yPos + 14);
-    
+
     doc.setTextColor(...textColor);
     doc.setFontSize(9);
     doc.text(patient.id, rightCol + 22, yPos + 7);
     doc.text(patient.phone || 'N/A', rightCol + 22, yPos + 14);
-    
+
     // Services Table
     yPos = 78;
     doc.setTextColor(...primaryColor);
@@ -162,13 +162,13 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
     doc.setFont('helvetica', 'bold');
     doc.text('SERVICES PROVIDED', margin, yPos);
     yPos += 8;
-    
+
     // Table header
     doc.setFillColor(240, 247, 255);
     doc.rect(margin, yPos, contentWidth, 8, 'F');
     doc.setDrawColor(...lineColor);
     doc.rect(margin, yPos, contentWidth, 8, 'S');
-    
+
     doc.setTextColor(...textColor);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
@@ -176,29 +176,29 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
     doc.text('Service Description', margin + 12, yPos + 5.5);
     doc.text('Details', margin + 90, yPos + 5.5);
     doc.text('Amount (Rs.)', pageWidth - margin - 25, yPos + 5.5);
-    
+
     yPos += 8;
     let rowNum = 1;
-    
+
     doc.setFont('helvetica', 'normal');
-    
+
     // Add each enabled service
     const addServiceRow = (description: string, details: string, amount: number) => {
       if (yPos > 250) {
         doc.addPage();
         yPos = 20;
       }
-      
+
       doc.setDrawColor(...lineColor);
       doc.rect(margin, yPos, contentWidth, 8, 'S');
-      
+
       doc.setTextColor(...textColor);
       doc.setFontSize(8);
       doc.text(String(rowNum), margin + 3, yPos + 5.5);
       doc.text(description, margin + 12, yPos + 5.5);
       doc.text(details.substring(0, 40), margin + 90, yPos + 5.5);
       doc.text(amount.toFixed(2), pageWidth - margin - 5, yPos + 5.5, { align: 'right' });
-      
+
       yPos += 8;
       rowNum++;
     };
@@ -236,9 +236,9 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
     }
 
     if (servicesData.surgery?.enabled) {
-      const surgeryTotal = servicesData.surgery.operationCharges + 
-                          servicesData.surgery.otCharges + 
-                          servicesData.surgery.anesthesiaCharges;
+      const surgeryTotal = servicesData.surgery.operationCharges +
+        servicesData.surgery.otCharges +
+        servicesData.surgery.anesthesiaCharges;
       addServiceRow(
         'Surgery',
         `${servicesData.surgery.type} - Dr. ${servicesData.surgery.surgeonName}`,
@@ -260,14 +260,14 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.5);
     doc.line(pageWidth - margin - 60, yPos, pageWidth - margin, yPos);
-    
+
     yPos += 8;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...primaryColor);
     doc.text('GRAND TOTAL:', pageWidth - margin - 55, yPos);
-    doc.text(`Rs. ${service.grandTotal.toFixed(2)}`, pageWidth - margin - 5, yPos, { align: 'right' });
-    
+    doc.text(`Rs. ${Number(service.grandTotal).toFixed(2)}`, pageWidth - margin - 5, yPos, { align: 'right' });
+
     // Amount in Words
     yPos += 12;
     doc.setFillColor(248, 250, 252);
@@ -275,33 +275,33 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
     doc.setTextColor(...textColor);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Amount in Words: Rupees ${numberToWords(service.grandTotal)} Only`, margin + 4, yPos + 8);
-    
+    doc.text(`Amount in Words: Rupees ${numberToWords(Number(service.grandTotal))} Only`, margin + 4, yPos + 8);
+
     // Payment Mode
     yPos += 18;
     doc.setTextColor(...mutedColor);
     doc.setFontSize(9);
     doc.text(`Payment Mode: ${servicesData.feeCollection?.paymentMode || 'Cash'}`, margin, yPos);
     doc.text(`Status: ${service.status}`, pageWidth - margin - 30, yPos);
-    
+
     // Signature Section
     yPos += 20;
     doc.setDrawColor(...lineColor);
-    
+
     doc.line(margin, yPos + 15, margin + 50, yPos + 15);
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
     doc.text('Patient Signature', margin + 10, yPos + 22);
-    
+
     doc.line(pageWidth - margin - 50, yPos + 15, pageWidth - margin, yPos + 15);
     doc.text('Authorized Signature', pageWidth - margin - 40, yPos + 22);
-    
+
     // Footer
     yPos += 35;
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.3);
     doc.line(margin, yPos, pageWidth - margin, yPos);
-    
+
     yPos += 6;
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
@@ -310,7 +310,7 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
     doc.text('This is a computer-generated receipt and is valid without signature.', pageWidth / 2, yPos, { align: 'center' });
     yPos += 4;
     doc.text(`For queries: ${settings.phone} | ${settings.email}`, pageWidth / 2, yPos, { align: 'center' });
-    
+
     doc.save(`Service-Receipt-${service.id}.pdf`);
   };
 
@@ -366,9 +366,9 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
   }
 
   if (servicesData.surgery?.enabled) {
-    const surgeryTotal = servicesData.surgery.operationCharges + 
-                        servicesData.surgery.otCharges + 
-                        servicesData.surgery.anesthesiaCharges;
+    const surgeryTotal = servicesData.surgery.operationCharges +
+      servicesData.surgery.otCharges +
+      servicesData.surgery.anesthesiaCharges;
     serviceItems.push({
       description: 'Surgery',
       details: `${servicesData.surgery.type} - Dr. ${servicesData.surgery.surgeonName}`,
@@ -467,7 +467,7 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
                     <td className="border p-2">{index + 1}</td>
                     <td className="border p-2 font-medium">{item.description}</td>
                     <td className="border p-2 text-muted-foreground">{item.details}</td>
-                    <td className="border p-2 text-right">{item.amount.toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(item.amount).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -494,8 +494,8 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
                       <td className="border p-2">{index + 1}</td>
                       <td className="border p-2">{m.name}</td>
                       <td className="border p-2 text-center">{m.quantity}</td>
-                      <td className="border p-2 text-right">{m.price.toFixed(2)}</td>
-                      <td className="border p-2 text-right">{(m.price * m.quantity).toFixed(2)}</td>
+                      <td className="border p-2 text-right">{Number(m.price).toFixed(2)}</td>
+                      <td className="border p-2 text-right">{(Number(m.price) * Number(m.quantity)).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -508,7 +508,7 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
             <div className="w-64 border rounded overflow-hidden">
               <div className="flex justify-between p-3 bg-primary/10 font-bold text-lg">
                 <span>GRAND TOTAL:</span>
-                <span className="text-primary">Rs. {service.grandTotal.toFixed(2)}</span>
+                <span className="text-primary">Rs. {Number(service.grandTotal).toFixed(2)}</span>
               </div>
               <div className="flex justify-between p-2 text-sm bg-muted/50">
                 <span>Payment Mode:</span>
@@ -520,7 +520,7 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
           {/* Amount in Words */}
           <div className="mb-4 p-3 border rounded bg-muted/30">
             <p className="text-sm">
-              <span className="font-medium">Amount in Words:</span> Rupees {numberToWords(service.grandTotal)} Only
+              <span className="font-medium">Amount in Words:</span> Rupees {numberToWords(Number(service.grandTotal))} Only
             </p>
           </div>
 
@@ -585,7 +585,7 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
                     <td className="border p-2">{index + 1}</td>
                     <td className="border p-2">{item.description}</td>
                     <td className="border p-2">{item.details}</td>
-                    <td className="border p-2 text-right">{item.amount.toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(item.amount).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -611,8 +611,8 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
                       <td className="border p-2">{index + 1}</td>
                       <td className="border p-2">{m.name}</td>
                       <td className="border p-2 text-center">{m.quantity}</td>
-                      <td className="border p-2 text-right">{m.price.toFixed(2)}</td>
-                      <td className="border p-2 text-right">{(m.price * m.quantity).toFixed(2)}</td>
+                      <td className="border p-2 text-right">{Number(m.price).toFixed(2)}</td>
+                      <td className="border p-2 text-right">{(Number(m.price) * Number(m.quantity)).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -624,7 +624,7 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
             <div className="w-64 border rounded">
               <div className="flex justify-between p-2 bg-primary/10 font-bold">
                 <span>GRAND TOTAL:</span>
-                <span>Rs. {service.grandTotal.toFixed(2)}</span>
+                <span>Rs. {Number(service.grandTotal).toFixed(2)}</span>
               </div>
               <div className="flex justify-between p-2 text-sm bg-muted/50">
                 <span>Payment Mode:</span>
@@ -635,7 +635,7 @@ export function ServiceReceiptDialog({ open, onOpenChange, service, patient }: S
 
           <div className="mb-6 p-3 border rounded bg-muted/30">
             <p className="text-sm">
-              <span className="font-medium">Amount in Words:</span> Rupees {numberToWords(service.grandTotal)} Only
+              <span className="font-medium">Amount in Words:</span> Rupees {numberToWords(Number(service.grandTotal))} Only
             </p>
           </div>
 

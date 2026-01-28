@@ -40,7 +40,7 @@ import {
   MedicineEntry,
 } from '@/types/services';
 import { useStock } from '@/hooks/useStock';
-import { usePayments } from '@/hooks/usePayments';
+// import { usePayments } from '@/hooks/usePayments';
 import { toast } from 'sonner';
 
 interface AdditionalServicesPanelProps {
@@ -60,7 +60,7 @@ export function AdditionalServicesPanel({
 }: AdditionalServicesPanelProps) {
   const [services, setServices] = useState<ServicesState>(createEmptyServices);
   const { stock, reduceStock } = useStock();
-  const { addPayment } = usePayments();
+  // const { addPayment } = usePayments(); // Moved to Patients.tsx
   const [localSubmitting, setLocalSubmitting] = useState(false);
 
   // Medicine selection state
@@ -199,6 +199,22 @@ export function AdditionalServicesPanel({
 
     try {
       // Validation
+      const hasService =
+        services.consultation.enabled ||
+        services.ultrasound.enabled ||
+        services.ecg.enabled ||
+        services.bpReading.enabled ||
+        services.injection.enabled ||
+        services.retention.enabled ||
+        services.surgery.enabled ||
+        services.feeCollection.labFee > 0 ||
+        services.feeCollection.medicines.length > 0;
+
+      if (!hasService) {
+        toast.error('Please select at least one service or medicine');
+        return;
+      }
+
       if (services.consultation.enabled) {
         if (!services.consultation.doctorName || !services.consultation.fee) {
           toast.error('Consultation: Doctor Name and Fee are required');
@@ -247,20 +263,6 @@ export function AdditionalServicesPanel({
         // Reduce stock for medicines
         for (const m of services.feeCollection.medicines) {
           await reduceStock(m.stockId, m.quantity);
-        }
-
-        // Create payment record if there are fees
-        if (grandTotal > 0) {
-          await addPayment({
-            patientId,
-            patientName,
-            consultationFee: services.consultation.enabled ? services.consultation.fee : 0,
-            labFee: services.feeCollection.labFee,
-            medicineFee: medicineFee,
-            totalAmount: grandTotal,
-            paymentMode: services.feeCollection.paymentMode,
-            medicines: services.feeCollection.medicines,
-          });
         }
 
         await onSave(services, grandTotal);

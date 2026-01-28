@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { UserRole } from '@/types/services';
-import { Permission } from '@/types/user';
+import { Permission, DEFAULT_PERMISSIONS } from '@/types/user';
 
 interface AuthUser {
   id: string;
@@ -71,6 +71,12 @@ export const useAuthStore = create<AuthStore>()(
                 } catch {
                   permissions = [];
                 }
+              }
+
+              // Fallback to default permissions if none assigned
+              if (!permissions || permissions.length === 0) {
+                const role = (data.user.Role || data.user.role) as UserRole;
+                permissions = DEFAULT_PERMISSIONS[role] || [];
               }
 
               set({
