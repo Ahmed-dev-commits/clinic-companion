@@ -20,17 +20,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import { UserRole } from '@/types/services';
+import { Permission } from '@/types/user';
 
 // Navigation items for the sidebar with role restrictions
-const navItems: { path: string; label: string; icon: React.ComponentType<any>; roles: UserRole[] }[] = [
+const navItems: { path: string; label: string; icon: React.ComponentType<any>; roles: UserRole[]; permission?: Permission }[] = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['Receptionist', 'Doctor', 'LabTechnician', 'Admin'] },
-  { path: '/patients', label: 'Patients', icon: Users, roles: ['Receptionist', 'Doctor', 'Admin'] },
-  { path: '/fees', label: 'Fee Collection', icon: CreditCard, roles: ['Receptionist', 'Admin'] },
-  { path: '/medicines', label: 'Medicines', icon: Activity, roles: ['Doctor', 'Admin'] },
-  { path: '/stock', label: 'Pharmacy', icon: Package, roles: ['Receptionist', 'Admin'] },
-  { path: '/prescriptions', label: 'Prescriptions', icon: FileText, roles: ['Doctor', 'Admin'] },
-  { path: '/lab-results', label: 'Lab Results', icon: FlaskConical, roles: ['LabTechnician', 'Admin'] },
-  { path: '/users', label: 'User Management', icon: ShieldCheck, roles: ['Admin'] },
+  { path: '/patients', label: 'Patients', icon: Users, roles: ['Receptionist', 'Doctor', 'Admin'], permission: 'view_patients' },
+  { path: '/fees', label: 'Fee Collection', icon: CreditCard, roles: ['Receptionist', 'Admin'], permission: 'view_payments' },
+  { path: '/medicines', label: 'Medicines', icon: Activity, roles: ['Doctor', 'Admin'], permission: 'view_medicines' },
+  { path: '/stock', label: 'Pharmacy', icon: Package, roles: ['Receptionist', 'Admin'], permission: 'manage_stock' },
+  { path: '/prescriptions', label: 'Prescriptions', icon: FileText, roles: ['Doctor', 'Admin'], permission: 'view_prescriptions' },
+  { path: '/lab-results', label: 'Lab Results', icon: FlaskConical, roles: ['LabTechnician', 'Admin'], permission: 'view_lab_results' },
+  { path: '/users', label: 'User Management', icon: ShieldCheck, roles: ['Admin'], permission: 'manage_users' },
   { path: '/settings', label: 'Settings', icon: Settings, roles: ['Receptionist', 'Doctor', 'LabTechnician', 'Admin'] },
 ];
 
@@ -38,7 +39,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, logout, hasRole } = useAuthStore();
+  const { user, logout, hasRole, hasPermission } = useAuthStore();
 
   const handleLogout = () => {
     logout();
@@ -46,9 +47,18 @@ export function Sidebar() {
   };
 
   // Filter nav items based on user role
-  const filteredNavItems = navItems.filter((item) =>
-    user && item.roles.includes(user.role)
-  );
+  // Filter nav items based on user role and permissions
+  const filteredNavItems = navItems.filter((item) => {
+    if (!user) return false;
+
+    // Check role match
+    const roleMatch = item.roles.includes(user.role);
+
+    // Check permission match if permission is defined
+    const permissionMatch = item.permission ? hasPermission(item.permission) : true;
+
+    return roleMatch && permissionMatch;
+  });
 
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {

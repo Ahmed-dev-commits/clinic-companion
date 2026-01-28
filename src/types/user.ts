@@ -12,7 +12,8 @@ export type Permission =
     | 'create_prescriptions'
     | 'view_reports'
     | 'manage_users'
-    | 'manage_stock';
+    | 'manage_stock'
+    | 'view_medicines';
 
 export interface User {
     id: string;
@@ -59,6 +60,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, Permission[]> = {
         'view_reports',
         'manage_users',
         'manage_stock',
+        'view_medicines',
     ],
     Doctor: [
         'view_patients',
@@ -66,12 +68,14 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, Permission[]> = {
         'view_prescriptions',
         'create_prescriptions',
         'view_lab_results',
+        'view_medicines',
     ],
     Receptionist: [
         'view_patients',
         'edit_patients',
         'view_payments',
         'create_payments',
+        'manage_stock',
     ],
     LabTech: [
         'view_patients',

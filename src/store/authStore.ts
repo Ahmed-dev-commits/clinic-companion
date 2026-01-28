@@ -1,12 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { UserRole } from '@/types/services';
+import { Permission } from '@/types/user';
 
 interface AuthUser {
   id: string;
   username: string;
   name: string;
   role: UserRole;
+  permissions?: Permission[];
+  email?: string;
+  phone?: string;
 }
 
 interface AuthStore {
@@ -15,6 +19,7 @@ interface AuthStore {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   hasRole: (roles: UserRole[]) => boolean;
+  hasPermission: (permission: Permission) => boolean;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -57,15 +62,33 @@ export const useAuthStore = create<AuthStore>()(
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.user) {
+              // Parse permissions if they're a string
+              let permissions: Permission[] = [];
+              if (data.user.Permissions || data.user.permissions) {
+                const permStr = data.user.Permissions || data.user.permissions;
+                try {
+                  permissions = typeof permStr === 'string' ? JSON.parse(permStr) : permStr;
+                } catch {
+                  permissions = [];
+                }
+              }
+
               set({
                 user: {
-                  id: data.user.ID,
-                  username: data.user.Username,
-                  name: data.user.Name,
-                  role: data.user.Role as UserRole,
+                  id: data.user.ID || data.user.id,
+                  username: data.user.Username || data.user.username,
+                  name: data.user.Name || data.user.name,
+                  role: (data.user.Role || data.user.role) as UserRole,
+                  permissions,
+                  email: data.user.Email || data.user.email,
+                  phone: data.user.Phone || data.user.phone,
                 },
                 isAuthenticated: true,
               });
+
+              // Store user ID in localStorage for API calls
+              localStorage.setItem('currentUserId', data.user.ID || data.user.id);
+
               return true;
             }
           }
@@ -94,6 +117,15 @@ export const useAuthStore = create<AuthStore>()(
         const user = get().user;
         if (!user) return false;
         return roles.includes(user.role);
+      },
+
+      hasPermission: (permission: Permission) => {
+        const user = get().user;
+        if (!user) return false;
+        // Admin always has all permissions
+        if (user.role === 'Admin') return true;
+        // Check if user has specific permission
+        return user.permissions ? user.permissions.includes(permission) : false;
       },
     }),
     {

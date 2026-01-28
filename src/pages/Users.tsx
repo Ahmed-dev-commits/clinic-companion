@@ -56,6 +56,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
     view_reports: 'View Reports',
     manage_users: 'Manage Users',
     manage_stock: 'Manage Stock',
+    view_medicines: 'View Medicines',
 };
 
 export function UsersPage() {

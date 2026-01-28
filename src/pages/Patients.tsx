@@ -86,8 +86,8 @@ export function PatientsPage() {
   const { payments, getPatientPayments } = usePayments();
   const { prescriptions, getPatientPrescriptions } = usePrescriptions();
   const { labResults, getPatientLabResults } = useLabResults();
-  const { user } = useAuthStore();
-  
+  const { user, hasPermission } = useAuthStore();
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isServicesDialogOpen, setIsServicesDialogOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
@@ -178,9 +178,9 @@ export function PatientsPage() {
         const id = await addPatient(patientData);
         toast.success(`Patient registered with ID: ${id}`);
         // After registration, open services dialog
-        const newPatient: Patient = { 
-          ...patientData, 
-          id, 
+        const newPatient: Patient = {
+          ...patientData,
+          id,
           createdAt: new Date().toISOString(),
         };
         setSelectedPatient(newPatient);
@@ -201,7 +201,7 @@ export function PatientsPage() {
 
   const handleSaveServices = async (services: ServicesState, grandTotal: number) => {
     if (!selectedPatient) return;
-    
+
     try {
       setIsSubmitting(true);
       await addService(selectedPatient.id, services, grandTotal);
@@ -260,33 +260,41 @@ export function PatientsPage() {
             <Button variant="outline" size="icon" onClick={refetch} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Patient
-            </Button>
+            {hasPermission('edit_patients') && (
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Patient
+              </Button>
+            )}
           </div>
         }
       />
 
       {/* Cloud/Demo Mode Banner */}
-      {isDemoMode && !isCloud && (
-        <div className="bg-amber-500/10 border border-amber-500 text-amber-700 px-4 py-3 rounded-lg mb-4">
-          <strong>Demo Mode:</strong> Backend server not available. Data is stored locally in your browser.
-        </div>
-      )}
-      {isCloud && (
-        <div className="bg-blue-500/10 border border-blue-500 text-blue-700 px-4 py-3 rounded-lg mb-4">
-          <strong>Cloud Mode:</strong> Connected to Lovable Cloud database. Data persists across sessions.
-        </div>
-      )}
+      {
+        isDemoMode && !isCloud && (
+          <div className="bg-amber-500/10 border border-amber-500 text-amber-700 px-4 py-3 rounded-lg mb-4">
+            <strong>Demo Mode:</strong> Backend server not available. Data is stored locally in your browser.
+          </div>
+        )
+      }
+      {
+        isCloud && (
+          <div className="bg-blue-500/10 border border-blue-500 text-blue-700 px-4 py-3 rounded-lg mb-4">
+            <strong>Cloud Mode:</strong> Connected to Lovable Cloud database. Data persists across sessions.
+          </div>
+        )
+      }
 
       {/* Error Banner */}
-      {error && !isDemoMode && (
-        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg mb-4">
-          <strong>Connection Error:</strong> {error}
-          <p className="text-sm mt-1">Make sure the backend server is running on localhost:3001</p>
-        </div>
-      )}
+      {
+        error && !isDemoMode && (
+          <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg mb-4">
+            <strong>Connection Error:</strong> {error}
+            <p className="text-sm mt-1">Make sure the backend server is running on localhost:3001</p>
+          </div>
+        )
+      }
 
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -347,7 +355,7 @@ export function PatientsPage() {
                       <div className="flex items-center gap-2">
                         {patient.name}
                         {isNewPatient(patient.createdAt) && (
-                          <Badge 
+                          <Badge
                             variant={getRoleBadgeVariant(patient.registeredByRole)}
                             className="text-[10px] px-1.5 py-0"
                           >
@@ -370,29 +378,35 @@ export function PatientsPage() {
                         >
                           <History className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Add Services"
-                          onClick={() => handleAddServices(patient)}
-                        >
-                          <ClipboardPlus className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenDialog(patient)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(patient)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {hasPermission('edit_patients') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Add Services"
+                            onClick={() => handleAddServices(patient)}
+                          >
+                            <ClipboardPlus className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {hasPermission('edit_patients') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenDialog(patient)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {hasPermission('delete_patients') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(patient)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -538,28 +552,32 @@ export function PatientsPage() {
       </Dialog>
 
       {/* Summary Dialog */}
-      {selectedPatient && currentServices && (
-        <ServicesSummaryDialog
-          open={isSummaryOpen}
-          onOpenChange={setIsSummaryOpen}
-          patient={selectedPatient}
-          services={currentServices}
-          grandTotal={currentTotal}
-        />
-      )}
+      {
+        selectedPatient && currentServices && (
+          <ServicesSummaryDialog
+            open={isSummaryOpen}
+            onOpenChange={setIsSummaryOpen}
+            patient={selectedPatient}
+            services={currentServices}
+            grandTotal={currentTotal}
+          />
+        )
+      }
 
       {/* Patient History Dialog */}
-      {selectedPatient && (
-        <PatientHistoryDialog
-          open={isHistoryOpen}
-          onOpenChange={setIsHistoryOpen}
-          patient={selectedPatient}
-          payments={getPatientPayments(selectedPatient.id)}
-          prescriptions={getPatientPrescriptions(selectedPatient.id)}
-          labResults={getPatientLabResults(selectedPatient.id)}
-          services={patientServices.filter(s => s.patientId === selectedPatient.id)}
-        />
-      )}
-    </div>
+      {
+        selectedPatient && (
+          <PatientHistoryDialog
+            open={isHistoryOpen}
+            onOpenChange={setIsHistoryOpen}
+            patient={selectedPatient}
+            payments={getPatientPayments(selectedPatient.id)}
+            prescriptions={getPatientPrescriptions(selectedPatient.id)}
+            labResults={getPatientLabResults(selectedPatient.id)}
+            services={patientServices.filter(s => s.patientId === selectedPatient.id)}
+          />
+        )
+      }
+    </div >
   );
 }
