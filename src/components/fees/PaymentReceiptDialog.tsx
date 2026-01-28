@@ -19,9 +19,9 @@ const numberToWords = (num: number): string => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
     'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  
+
   if (num === 0) return 'Zero';
-  
+
   const convert = (n: number): string => {
     if (n < 20) return ones[n];
     if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
@@ -30,7 +30,7 @@ const numberToWords = (num: number): string => {
     if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
     return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
   };
-  
+
   return convert(Math.floor(num));
 };
 
@@ -50,18 +50,18 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
-    
+
     doc.setProperties({
       title: `Payment-Receipt-${payment.id}`,
       subject: 'Payment Receipt',
       author: settings.clinicName,
       creator: settings.clinicName
     });
-    
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
     const contentWidth = pageWidth - 2 * margin;
-    
+
     const primaryColor: [number, number, number] = [26, 86, 219];
     const textColor: [number, number, number] = [30, 30, 30];
     const mutedColor: [number, number, number] = [100, 100, 100];
@@ -87,19 +87,19 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
       doc.setFont('helvetica', 'bold');
       doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
     }
-    
+
     doc.setTextColor(...primaryColor);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(settings.clinicName, margin + 30, 18);
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(settings.address, margin + 30, 24);
     doc.text(settings.city, margin + 30, 29);
     doc.text(`Phone: ${settings.phone} | Email: ${settings.email}`, margin + 30, 34);
-    
+
     // Title
     doc.setTextColor(...primaryColor);
     doc.setFontSize(14);
@@ -110,42 +110,42 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
     doc.setFont('helvetica', 'normal');
     doc.text(`Receipt No: ${payment.id}`, pageWidth - margin, 25, { align: 'right' });
     doc.text(`Date: ${format(new Date(payment.createdAt), 'dd MMM yyyy')}`, pageWidth - margin, 30, { align: 'right' });
-    
+
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.8);
     doc.line(margin, 40, pageWidth - margin, 40);
-    
+
     // Patient Info Box
     let yPos = 48;
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, yPos, contentWidth, 20, 2, 2, 'S');
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
     doc.text('Patient Name:', margin + 4, yPos + 7);
     doc.text('Patient ID:', margin + 4, yPos + 14);
-    
+
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.text(payment.patientName, margin + 28, yPos + 7);
     doc.setFont('helvetica', 'normal');
     doc.text(payment.patientId, margin + 28, yPos + 14);
-    
+
     if (patient) {
       const rightCol = pageWidth / 2 + 10;
       doc.setTextColor(...mutedColor);
       doc.setFontSize(8);
       doc.text('Age / Gender:', rightCol, yPos + 7);
       doc.text('Contact:', rightCol, yPos + 14);
-      
+
       doc.setTextColor(...textColor);
       doc.setFontSize(9);
       doc.text(`${patient.age} years / ${patient.gender}`, rightCol + 25, yPos + 7);
       doc.text(patient.phone || 'N/A', rightCol + 25, yPos + 14);
     }
-    
+
     // Charges Table
     yPos = 78;
     doc.setTextColor(...primaryColor);
@@ -153,13 +153,13 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
     doc.setFont('helvetica', 'bold');
     doc.text('CHARGES BREAKDOWN', margin, yPos);
     yPos += 8;
-    
+
     // Table header
     doc.setFillColor(240, 247, 255);
     doc.rect(margin, yPos, contentWidth, 8, 'F');
     doc.setDrawColor(...lineColor);
     doc.rect(margin, yPos, contentWidth, 8, 'S');
-    
+
     doc.setTextColor(...textColor);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
@@ -168,12 +168,12 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
     doc.text('Qty', margin + 100, yPos + 5.5);
     doc.text('Rate (Rs.)', margin + 120, yPos + 5.5);
     doc.text('Amount (Rs.)', pageWidth - margin - 25, yPos + 5.5);
-    
+
     yPos += 8;
     let rowNum = 1;
-    
+
     doc.setFont('helvetica', 'normal');
-    
+
     // Consultation Fee
     if (payment.consultationFee > 0) {
       doc.setDrawColor(...lineColor);
@@ -183,12 +183,12 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
       doc.text(String(rowNum), margin + 3, yPos + 5.5);
       doc.text('Consultation Fee', margin + 12, yPos + 5.5);
       doc.text('1', margin + 100, yPos + 5.5);
-      doc.text(payment.consultationFee.toFixed(2), margin + 120, yPos + 5.5);
-      doc.text(payment.consultationFee.toFixed(2), pageWidth - margin - 5, yPos + 5.5, { align: 'right' });
+      doc.text(Number(payment.consultationFee).toFixed(2), margin + 120, yPos + 5.5);
+      doc.text(Number(payment.consultationFee).toFixed(2), pageWidth - margin - 5, yPos + 5.5, { align: 'right' });
       yPos += 8;
       rowNum++;
     }
-    
+
     // Lab Fee
     if (payment.labFee > 0) {
       doc.setDrawColor(...lineColor);
@@ -198,12 +198,12 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
       doc.text(String(rowNum), margin + 3, yPos + 5.5);
       doc.text('Laboratory Fee', margin + 12, yPos + 5.5);
       doc.text('1', margin + 100, yPos + 5.5);
-      doc.text(payment.labFee.toFixed(2), margin + 120, yPos + 5.5);
-      doc.text(payment.labFee.toFixed(2), pageWidth - margin - 5, yPos + 5.5, { align: 'right' });
+      doc.text(Number(payment.labFee).toFixed(2), margin + 120, yPos + 5.5);
+      doc.text(Number(payment.labFee).toFixed(2), pageWidth - margin - 5, yPos + 5.5, { align: 'right' });
       yPos += 8;
       rowNum++;
     }
-    
+
     // Medicines
     if (payment.medicines && payment.medicines.length > 0) {
       yPos += 5;
@@ -212,13 +212,13 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
       doc.setFont('helvetica', 'bold');
       doc.text('MEDICINES DISPENSED', margin, yPos);
       yPos += 8;
-      
+
       // Medicine table header
       doc.setFillColor(240, 247, 255);
       doc.rect(margin, yPos, contentWidth, 8, 'F');
       doc.setDrawColor(...lineColor);
       doc.rect(margin, yPos, contentWidth, 8, 'S');
-      
+
       doc.setTextColor(...textColor);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
@@ -227,10 +227,10 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
       doc.text('Qty', margin + 100, yPos + 5.5);
       doc.text('Rate (Rs.)', margin + 120, yPos + 5.5);
       doc.text('Amount (Rs.)', pageWidth - margin - 25, yPos + 5.5);
-      
+
       yPos += 8;
       doc.setFont('helvetica', 'normal');
-      
+
       payment.medicines.forEach((m: any, index: number) => {
         doc.setDrawColor(...lineColor);
         doc.rect(margin, yPos, contentWidth, 8, 'S');
@@ -239,25 +239,25 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
         doc.text(String(index + 1), margin + 3, yPos + 5.5);
         doc.text(m.name.substring(0, 35), margin + 12, yPos + 5.5);
         doc.text(String(m.quantity), margin + 100, yPos + 5.5);
-        doc.text(m.price.toFixed(2), margin + 120, yPos + 5.5);
-        doc.text((m.price * m.quantity).toFixed(2), pageWidth - margin - 5, yPos + 5.5, { align: 'right' });
+        doc.text(Number(m.price).toFixed(2), margin + 120, yPos + 5.5);
+        doc.text((Number(m.price) * Number(m.quantity)).toFixed(2), pageWidth - margin - 5, yPos + 5.5, { align: 'right' });
         yPos += 8;
       });
     }
-    
+
     // Total Section
     yPos += 5;
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.5);
     doc.line(pageWidth - margin - 60, yPos, pageWidth - margin, yPos);
-    
+
     yPos += 8;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...primaryColor);
     doc.text('TOTAL AMOUNT:', pageWidth - margin - 55, yPos);
-    doc.text(`Rs. ${payment.totalAmount.toFixed(2)}`, pageWidth - margin - 5, yPos, { align: 'right' });
-    
+    doc.text(`Rs. ${Number(payment.totalAmount).toFixed(2)}`, pageWidth - margin - 5, yPos, { align: 'right' });
+
     // Amount in Words
     yPos += 12;
     doc.setFillColor(248, 250, 252);
@@ -265,32 +265,32 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
     doc.setTextColor(...textColor);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Amount in Words: Rupees ${numberToWords(payment.totalAmount)} Only`, margin + 4, yPos + 8);
-    
+    doc.text(`Amount in Words: Rupees ${numberToWords(Number(payment.totalAmount))} Only`, margin + 4, yPos + 8);
+
     // Payment Mode
     yPos += 18;
     doc.setTextColor(...mutedColor);
     doc.setFontSize(9);
     doc.text(`Payment Mode: ${payment.paymentMode}`, margin, yPos);
-    
+
     // Signature Section
     yPos += 20;
     doc.setDrawColor(...lineColor);
-    
+
     doc.line(margin, yPos + 15, margin + 50, yPos + 15);
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
     doc.text('Patient Signature', margin + 10, yPos + 22);
-    
+
     doc.line(pageWidth - margin - 50, yPos + 15, pageWidth - margin, yPos + 15);
     doc.text('Authorized Signature', pageWidth - margin - 40, yPos + 22);
-    
+
     // Footer
     yPos += 35;
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.3);
     doc.line(margin, yPos, pageWidth - margin, yPos);
-    
+
     yPos += 6;
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
@@ -299,7 +299,7 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
     doc.text('This is a computer-generated receipt and is valid without signature.', pageWidth / 2, yPos, { align: 'center' });
     yPos += 4;
     doc.text(`For queries: ${settings.phone} | ${settings.email}`, pageWidth / 2, yPos, { align: 'center' });
-    
+
     doc.save(`Payment-Receipt-${payment.id}.pdf`);
   };
 
@@ -382,8 +382,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
                     <td className="border p-2">1</td>
                     <td className="border p-2">Consultation Fee</td>
                     <td className="border p-2 text-center">1</td>
-                    <td className="border p-2 text-right">{payment.consultationFee.toFixed(2)}</td>
-                    <td className="border p-2 text-right">{payment.consultationFee.toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(payment.consultationFee).toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(payment.consultationFee).toFixed(2)}</td>
                   </tr>
                 )}
                 {payment.labFee > 0 && (
@@ -391,8 +391,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
                     <td className="border p-2">{payment.consultationFee > 0 ? 2 : 1}</td>
                     <td className="border p-2">Laboratory Fee</td>
                     <td className="border p-2 text-center">1</td>
-                    <td className="border p-2 text-right">{payment.labFee.toFixed(2)}</td>
-                    <td className="border p-2 text-right">{payment.labFee.toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(payment.labFee).toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(payment.labFee).toFixed(2)}</td>
                   </tr>
                 )}
               </tbody>
@@ -419,8 +419,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
                       <td className="border p-2">{index + 1}</td>
                       <td className="border p-2">{m.name}</td>
                       <td className="border p-2 text-center">{m.quantity}</td>
-                      <td className="border p-2 text-right">{m.price.toFixed(2)}</td>
-                      <td className="border p-2 text-right">{(m.price * m.quantity).toFixed(2)}</td>
+                      <td className="border p-2 text-right">{Number(m.price).toFixed(2)}</td>
+                      <td className="border p-2 text-right">{(Number(m.price) * Number(m.quantity)).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -434,24 +434,24 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
               {payment.consultationFee > 0 && (
                 <div className="flex justify-between p-2 border-b text-sm">
                   <span>Consultation Fee:</span>
-                  <span>Rs. {payment.consultationFee.toFixed(2)}</span>
+                  <span>Rs. {Number(payment.consultationFee).toFixed(2)}</span>
                 </div>
               )}
               {payment.labFee > 0 && (
                 <div className="flex justify-between p-2 border-b text-sm">
                   <span>Lab Fee:</span>
-                  <span>Rs. {payment.labFee.toFixed(2)}</span>
+                  <span>Rs. {Number(payment.labFee).toFixed(2)}</span>
                 </div>
               )}
               {payment.medicineFee > 0 && (
                 <div className="flex justify-between p-2 border-b text-sm">
                   <span>Medicine Fee:</span>
-                  <span>Rs. {payment.medicineFee.toFixed(2)}</span>
+                  <span>Rs. {Number(payment.medicineFee).toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between p-3 bg-primary/10 font-bold text-lg">
                 <span>TOTAL:</span>
-                <span className="text-primary">Rs. {payment.totalAmount.toFixed(2)}</span>
+                <span className="text-primary">Rs. {Number(payment.totalAmount).toFixed(2)}</span>
               </div>
               <div className="flex justify-between p-2 text-sm bg-muted/50">
                 <span>Payment Mode:</span>
@@ -463,7 +463,7 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
           {/* Amount in Words */}
           <div className="mb-4 p-3 border rounded bg-muted/30">
             <p className="text-sm">
-              <span className="font-medium">Amount in Words:</span> Rupees {numberToWords(payment.totalAmount)} Only
+              <span className="font-medium">Amount in Words:</span> Rupees {numberToWords(Number(payment.totalAmount))} Only
             </p>
           </div>
 
@@ -533,8 +533,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
                     <td className="border p-2">1</td>
                     <td className="border p-2">Consultation Fee</td>
                     <td className="border p-2 text-center">1</td>
-                    <td className="border p-2 text-right">{payment.consultationFee.toFixed(2)}</td>
-                    <td className="border p-2 text-right">{payment.consultationFee.toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(payment.consultationFee).toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(payment.consultationFee).toFixed(2)}</td>
                   </tr>
                 )}
                 {payment.labFee > 0 && (
@@ -542,8 +542,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
                     <td className="border p-2">{payment.consultationFee > 0 ? 2 : 1}</td>
                     <td className="border p-2">Laboratory Fee</td>
                     <td className="border p-2 text-center">1</td>
-                    <td className="border p-2 text-right">{payment.labFee.toFixed(2)}</td>
-                    <td className="border p-2 text-right">{payment.labFee.toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(payment.labFee).toFixed(2)}</td>
+                    <td className="border p-2 text-right">{Number(payment.labFee).toFixed(2)}</td>
                   </tr>
                 )}
               </tbody>
@@ -569,8 +569,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
                       <td className="border p-2">{index + 1}</td>
                       <td className="border p-2">{m.name}</td>
                       <td className="border p-2 text-center">{m.quantity}</td>
-                      <td className="border p-2 text-right">{m.price.toFixed(2)}</td>
-                      <td className="border p-2 text-right">{(m.price * m.quantity).toFixed(2)}</td>
+                      <td className="border p-2 text-right">{Number(m.price).toFixed(2)}</td>
+                      <td className="border p-2 text-right">{(Number(m.price) * Number(m.quantity)).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -583,24 +583,24 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, patient }: P
               {payment.consultationFee > 0 && (
                 <div className="flex justify-between p-2 border-b text-sm">
                   <span>Consultation Fee:</span>
-                  <span>Rs. {payment.consultationFee.toFixed(2)}</span>
+                  <span>Rs. {Number(payment.consultationFee).toFixed(2)}</span>
                 </div>
               )}
               {payment.labFee > 0 && (
                 <div className="flex justify-between p-2 border-b text-sm">
                   <span>Lab Fee:</span>
-                  <span>Rs. {payment.labFee.toFixed(2)}</span>
+                  <span>Rs. {Number(payment.labFee).toFixed(2)}</span>
                 </div>
               )}
               {payment.medicineFee > 0 && (
                 <div className="flex justify-between p-2 border-b text-sm">
                   <span>Medicine Fee:</span>
-                  <span>Rs. {payment.medicineFee.toFixed(2)}</span>
+                  <span>Rs. {Number(payment.medicineFee).toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between p-2 bg-primary/10 font-bold">
                 <span>TOTAL AMOUNT:</span>
-                <span>Rs. {payment.totalAmount.toFixed(2)}</span>
+                <span>Rs. {Number(payment.totalAmount).toFixed(2)}</span>
               </div>
               <div className="flex justify-between p-2 text-sm bg-muted/50">
                 <span>Payment Mode:</span>
