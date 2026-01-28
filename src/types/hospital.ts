@@ -10,6 +10,8 @@ export interface Patient {
   visitDate: string;
   symptoms: string;
   createdAt: string;
+  registeredBy?: string;
+  registeredByRole?: string;
 }
 
 export interface PaymentMedicine {

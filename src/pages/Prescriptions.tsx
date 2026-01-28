@@ -23,6 +23,8 @@ import { format } from 'date-fns';
 import { PrescriptionMedicine, Prescription } from '@/types/hospital';
 import jsPDF from 'jspdf';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { MedicineSearch } from '@/components/medicines/MedicineSearch';
+import { PrescriptionHistoryDialog } from '@/components/prescriptions/PrescriptionHistoryDialog';
 
 export function PrescriptionsPage() {
   const { patients } = useAccessPatients();
@@ -49,6 +51,7 @@ export function PrescriptionsPage() {
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
 
@@ -492,6 +495,12 @@ export function PrescriptionsPage() {
       <PageHeader
         title="E-Prescriptions"
         description="Create and manage digital prescriptions"
+        action={
+          <Button variant="outline" onClick={() => setHistoryDialogOpen(true)}>
+            <FileText className="mr-2 h-4 w-4" />
+            View History
+          </Button>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -527,23 +536,16 @@ export function PrescriptionsPage() {
 
             {/* Add Medicine */}
             <div className="border rounded-lg p-4 space-y-3">
-              <Label className="text-sm font-medium">Add Medicine</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Select
+              <Label className="text-sm font-medium">Add Medicine (Search with 3+ characters)</Label>
+              <div className="grid grid-cols-1 gap-2">
+                <MedicineSearch
+                  stock={stock}
+                  onSelect={(medicine) => setNewMedicine({ ...newMedicine, name: medicine.name })}
                   value={newMedicine.name}
-                  onValueChange={(value) => setNewMedicine({ ...newMedicine, name: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select medicine" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stock.filter(s => s.quantity > 0).map((item) => (
-                      <SelectItem key={item.id} value={item.name}>
-                        {item.name} ({item.quantity} in stock)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Search medicine by name..."
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
                 <Select
                   value={newMedicine.dosage}
                   onValueChange={(value) => setNewMedicine({ ...newMedicine, dosage: value })}
@@ -924,6 +926,13 @@ export function PrescriptionsPage() {
           </div>
         </div>
       </div>
+
+      <PrescriptionHistoryDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        prescriptions={prescriptions}
+        patients={patients}
+      />
     </div>
   );
 }

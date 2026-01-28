@@ -144,7 +144,7 @@ export function StockPage() {
   return (
     <div>
       <PageHeader
-        title="Stock Management"
+        title="Pharmacy"
         description="Manage medicines and supplies inventory"
         action={
           <div className="flex items-center gap-3">

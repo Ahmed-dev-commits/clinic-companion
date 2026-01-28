@@ -101,6 +101,8 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          registered_by: string | null
+          registered_by_role: string | null
           symptoms: string | null
           visit_date: string | null
         }
@@ -112,6 +114,8 @@ export type Database = {
           id: string
           name: string
           phone?: string | null
+          registered_by?: string | null
+          registered_by_role?: string | null
           symptoms?: string | null
           visit_date?: string | null
         }
@@ -123,6 +127,8 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          registered_by?: string | null
+          registered_by_role?: string | null
           symptoms?: string | null
           visit_date?: string | null
         }

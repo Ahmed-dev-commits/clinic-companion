@@ -18,6 +18,8 @@ export interface PatientRow {
   visit_date: string | null;
   symptoms: string | null;
   created_at: string | null;
+  registered_by: string | null;
+  registered_by_role: string | null;
 }
 
 export const supabasePatientsApi = {

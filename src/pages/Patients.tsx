@@ -4,11 +4,13 @@ import { usePatientServices } from '@/hooks/usePatientServices';
 import { usePayments } from '@/hooks/usePayments';
 import { usePrescriptions } from '@/hooks/usePrescriptions';
 import { useLabResults } from '@/hooks/useLabResults';
+import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -36,11 +38,47 @@ import { Plus, Search, Edit, Trash2, Loader2, RefreshCw, ClipboardPlus, History 
 import { toast } from 'sonner';
 import { Patient } from '@/types/hospital';
 import { ServicesState } from '@/types/services';
-import { format } from 'date-fns';
+import { format, differenceInHours } from 'date-fns';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { AdditionalServicesPanel } from '@/components/patients/AdditionalServicesPanel';
 import { ServicesSummaryDialog } from '@/components/patients/ServicesSummaryDialog';
 import { PatientHistoryDialog } from '@/components/patients/PatientHistoryDialog';
+
+// Helper function to check if patient is "new" (registered within last 24 hours)
+const isNewPatient = (createdAt: string): boolean => {
+  const hours = differenceInHours(new Date(), new Date(createdAt));
+  return hours < 24;
+};
+
+// Helper to get badge variant based on role
+const getRoleBadgeVariant = (role?: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  switch (role) {
+    case 'Doctor':
+      return 'default';
+    case 'LabTechnician':
+      return 'secondary';
+    case 'Admin':
+      return 'destructive';
+    default:
+      return 'outline';
+  }
+};
+
+// Helper to get display text for role
+const getRoleDisplayText = (role?: string): string => {
+  switch (role) {
+    case 'Doctor':
+      return 'Dr.';
+    case 'LabTechnician':
+      return 'Lab';
+    case 'Receptionist':
+      return 'Rec.';
+    case 'Admin':
+      return 'Admin';
+    default:
+      return '';
+  }
+};
 
 export function PatientsPage() {
   const { patients, loading, error, isDemoMode, isCloud, addPatient, updatePatient, deletePatient, refetch } = useAccessPatients();
@@ -48,6 +86,7 @@ export function PatientsPage() {
   const { payments, getPatientPayments } = usePayments();
   const { prescriptions, getPatientPrescriptions } = usePrescriptions();
   const { labResults, getPatientLabResults } = useLabResults();
+  const { user } = useAuthStore();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isServicesDialogOpen, setIsServicesDialogOpen] = useState(false);
@@ -125,6 +164,8 @@ export function PatientsPage() {
       address: formData.address.trim(),
       visitDate: formData.visitDate,
       symptoms: formData.symptoms.trim(),
+      registeredBy: user?.name,
+      registeredByRole: user?.role,
     };
 
     setIsSubmitting(true);
@@ -137,7 +178,11 @@ export function PatientsPage() {
         const id = await addPatient(patientData);
         toast.success(`Patient registered with ID: ${id}`);
         // After registration, open services dialog
-        const newPatient: Patient = { ...patientData, id, createdAt: new Date().toISOString() };
+        const newPatient: Patient = { 
+          ...patientData, 
+          id, 
+          createdAt: new Date().toISOString(),
+        };
         setSelectedPatient(newPatient);
         setIsDialogOpen(false);
         setIsServicesDialogOpen(true);
@@ -298,7 +343,19 @@ export function PatientsPage() {
                 filteredPatients.map((patient) => (
                   <TableRow key={patient.id}>
                     <TableCell className="font-mono text-sm">{patient.id}</TableCell>
-                    <TableCell className="font-medium">{patient.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {patient.name}
+                        {isNewPatient(patient.createdAt) && (
+                          <Badge 
+                            variant={getRoleBadgeVariant(patient.registeredByRole)}
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            New {getRoleDisplayText(patient.registeredByRole) && `• ${getRoleDisplayText(patient.registeredByRole)}`}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{patient.age}</TableCell>
                     <TableCell>{patient.gender}</TableCell>
                     <TableCell>{patient.phone}</TableCell>
