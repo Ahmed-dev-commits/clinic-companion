@@ -7,12 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Save, RotateCcw, Upload, X, Building2, User, Image } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Save, RotateCcw, Upload, X, Building2, User, Image, Printer } from 'lucide-react';
 
 export function SettingsPage() {
   const { settings, updateSettings, resetSettings } = useSettingsStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [formData, setFormData] = useState(settings);
 
   const handleChange = (field: string, value: string) => {
@@ -75,6 +76,13 @@ export function SettingsPage() {
       doctorRegNo: 'MCI-12345-2020',
       consultationHours: '10 AM - 6 PM',
       logo: null,
+      pdfSettings: {
+        primaryColor: '#1a56db',
+        secondaryColor: '#64748b',
+        footerText: 'Please consult your doctor before taking any medicine. Self-medication can be harmful.',
+        showLogo: true,
+        showWatermark: false,
+      },
     });
     toast.success('Settings reset to defaults');
   };
@@ -258,6 +266,73 @@ export function SettingsPage() {
         </Card>
       </div>
 
+      {/* PDF Customization */}
+      <Card className="lg:col-span-2 mt-6">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Printer className="h-5 w-5 text-primary" />
+            <CardTitle>PDF Print Settings</CardTitle>
+          </div>
+          <CardDescription>
+            Customize the appearance of generated PDF prescriptions and reports
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Primary Color (Brand Color)</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  type="color"
+                  value={formData.pdfSettings?.primaryColor || '#1a56db'}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    pdfSettings: { ...prev.pdfSettings, primaryColor: e.target.value } as any
+                  }))}
+                  className="w-12 h-10 p-1 cursor-pointer"
+                />
+                <Input
+                  value={formData.pdfSettings?.primaryColor || '#1a56db'}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    pdfSettings: { ...prev.pdfSettings, primaryColor: e.target.value } as any
+                  }))}
+                  placeholder="#1a56db"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-8">
+              <input
+                type="checkbox"
+                id="showLogo"
+                checked={formData.pdfSettings?.showLogo ?? true}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  pdfSettings: { ...prev.pdfSettings, showLogo: e.target.checked } as any
+                }))}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="showLogo" className="font-normal cursor-pointer">Show Logo on PDF</Label>
+            </div>
+          </div>
+
+          <div>
+            <Label>Footer / Disclaimer Text</Label>
+            <Textarea
+              value={formData.pdfSettings?.footerText || ''}
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                pdfSettings: { ...prev.pdfSettings, footerText: e.target.value } as any
+              }))}
+              placeholder="Disclaimer text..."
+              rows={2}
+              className="mt-2"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Action Buttons */}
       <Separator className="my-6" />
       <div className="flex justify-end gap-3">
@@ -270,6 +345,6 @@ export function SettingsPage() {
           Save Settings
         </Button>
       </div>
-    </div>
+    </div >
   );
 }

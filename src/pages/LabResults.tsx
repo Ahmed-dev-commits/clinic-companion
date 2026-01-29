@@ -63,13 +63,13 @@ export function LabResultsPage() {
   const { patients } = useAccessPatients();
   const { labResults, loading, addLabResult, updateLabResultStatus, notifyPatient, markAsCollected, refetch } = useLabResults();
   const { settings } = useSettingsStore();
-  
+
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
   const [tests, setTests] = useState<LabTestResult[]>([]);
   const [notes, setNotes] = useState('');
   const [technician, setTechnician] = useState('');
-  
+
   // New test form
   const [selectedTest, setSelectedTest] = useState('');
   const [testValue, setTestValue] = useState('');
@@ -181,7 +181,7 @@ export function LabResultsPage() {
 
   const handleDownloadPDF = (lab: LabResult) => {
     const doc = new jsPDF();
-    
+
     // Set document properties without URLs
     doc.setProperties({
       title: `Lab-Report-${lab.id}`,
@@ -189,26 +189,32 @@ export function LabResultsPage() {
       author: settings.clinicName,
       creator: settings.clinicName
     });
-    
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const contentWidth = pageWidth - 2 * margin;
-    
+
     // Colors
-    const primaryColor: [number, number, number] = [26, 86, 219];
+    const primaryColorHex = settings.pdfSettings?.primaryColor || '#1a56db';
+    const r = parseInt(primaryColorHex.slice(1, 3), 16);
+    const g = parseInt(primaryColorHex.slice(3, 5), 16);
+    const b = parseInt(primaryColorHex.slice(5, 7), 16);
+    const primaryColor: [number, number, number] = [r, g, b];
+
     const textColor: [number, number, number] = [30, 30, 30];
     const mutedColor: [number, number, number] = [100, 100, 100];
     const lineColor: [number, number, number] = [200, 200, 200];
     const greenColor: [number, number, number] = [34, 197, 94];
     const redColor: [number, number, number] = [239, 68, 68];
     const yellowColor: [number, number, number] = [234, 179, 8];
-    
+
     const patient = patients.find(p => p.id === lab.patientId);
-    
+
     // ============ HEADER ============
     // Logo
-    if (settings.logo) {
+    const showLogo = settings.pdfSettings?.showLogo ?? true;
+    if (settings.logo && showLogo) {
       try {
         doc.addImage(settings.logo, 'PNG', margin, 10, 25, 25);
       } catch {
@@ -219,7 +225,7 @@ export function LabResultsPage() {
         doc.setFont('helvetica', 'bold');
         doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
       }
-    } else {
+    } else if (showLogo) {
       doc.setFillColor(...primaryColor);
       doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
       doc.setTextColor(255, 255, 255);
@@ -227,19 +233,20 @@ export function LabResultsPage() {
       doc.setFont('helvetica', 'bold');
       doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
     }
-    
+
     doc.setTextColor(...primaryColor);
     doc.setFontSize(18);
+    // ... header text ...
     doc.setFont('helvetica', 'bold');
     doc.text(settings.clinicName, margin + 30, 18);
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(settings.address, margin + 30, 24);
     doc.text(settings.city, margin + 30, 29);
     doc.text(`Phone: ${settings.phone} | Email: ${settings.email}`, margin + 30, 34);
-    
+
     // Right side - Lab Report title
     doc.setTextColor(...primaryColor);
     doc.setFontSize(14);
@@ -250,25 +257,25 @@ export function LabResultsPage() {
     doc.setFont('helvetica', 'normal');
     doc.text(`Report No: ${lab.id}`, pageWidth - margin, 25, { align: 'right' });
     doc.text(`Report Date: ${safeFormatDate(lab.reportDate, 'dd MMM yyyy')}`, pageWidth - margin, 30, { align: 'right' });
-    
+
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.8);
     doc.line(margin, 40, pageWidth - margin, 40);
-    
+
     // ============ PATIENT INFO ============
     let yPos = 48;
-    
+
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, yPos, contentWidth, 24, 2, 2, 'S');
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
-    
+
     doc.text('Patient Name:', margin + 4, yPos + 7);
     doc.text('Age / Gender:', margin + 4, yPos + 14);
     doc.text('Patient ID:', margin + 4, yPos + 21);
-    
+
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
@@ -276,33 +283,33 @@ export function LabResultsPage() {
     doc.setFont('helvetica', 'normal');
     doc.text(`${lab.patientAge} years / ${patient?.gender || 'N/A'}`, margin + 28, yPos + 14);
     doc.text(lab.patientId, margin + 28, yPos + 21);
-    
+
     const rightCol = pageWidth / 2 + 10;
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
     doc.text('Sample Date:', rightCol, yPos + 7);
     doc.text('Report Date:', rightCol, yPos + 14);
     doc.text('Technician:', rightCol, yPos + 21);
-    
+
     doc.setTextColor(...textColor);
     doc.setFontSize(9);
     doc.text(safeFormatDate(lab.testDate, 'dd MMM yyyy'), rightCol + 25, yPos + 7);
     doc.text(safeFormatDate(lab.reportDate, 'dd MMM yyyy'), rightCol + 25, yPos + 14);
     doc.text(lab.technician || 'N/A', rightCol + 25, yPos + 21);
-    
+
     yPos += 32;
-    
+
     // ============ TEST RESULTS TABLE ============
     doc.setFillColor(...primaryColor);
     doc.rect(margin, yPos, contentWidth, 8, 'F');
-    
+
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    
+
     const colWidths = [55, 30, 25, 40, 30];
     let xPos = margin + 2;
-    
+
     doc.text('Test Name', xPos, yPos + 5.5);
     xPos += colWidths[0];
     doc.text('Result', xPos, yPos + 5.5);
@@ -312,33 +319,33 @@ export function LabResultsPage() {
     doc.text('Normal Range', xPos, yPos + 5.5);
     xPos += colWidths[3];
     doc.text('Status', xPos, yPos + 5.5);
-    
+
     yPos += 8;
-    
+
     doc.setFont('helvetica', 'normal');
-    
+
     lab.tests.forEach((test, i) => {
       if (i % 2 === 0) {
         doc.setFillColor(250, 250, 252);
         doc.rect(margin, yPos, contentWidth, 8, 'F');
       }
-      
+
       xPos = margin + 2;
       doc.setTextColor(...textColor);
       doc.text(test.name, xPos, yPos + 5.5);
       xPos += colWidths[0];
-      
+
       doc.setFont('helvetica', 'bold');
       doc.text(test.value, xPos, yPos + 5.5);
       doc.setFont('helvetica', 'normal');
       xPos += colWidths[1];
-      
+
       doc.text(test.unit, xPos, yPos + 5.5);
       xPos += colWidths[2];
-      
+
       doc.text(test.normalRange, xPos, yPos + 5.5);
       xPos += colWidths[3];
-      
+
       // Status with color
       if (test.status === 'Normal') {
         doc.setTextColor(...greenColor);
@@ -350,16 +357,16 @@ export function LabResultsPage() {
       doc.setFont('helvetica', 'bold');
       doc.text(test.status, xPos, yPos + 5.5);
       doc.setFont('helvetica', 'normal');
-      
+
       yPos += 8;
     });
-    
+
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
     doc.rect(margin, yPos - (lab.tests.length * 8) - 8, contentWidth, (lab.tests.length + 1) * 8, 'S');
-    
+
     yPos += 8;
-    
+
     // ============ NOTES ============
     if (lab.notes) {
       doc.setDrawColor(...lineColor);
@@ -374,13 +381,13 @@ export function LabResultsPage() {
       doc.text(splitNotes, margin + 4, yPos + 12);
       yPos += 22;
     }
-    
+
     // ============ FOOTER ============
     const footerY = pageHeight - 50;
-    
+
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
-    
+
     // Technician signature
     doc.rect(margin, footerY, 60, 25, 'S');
     doc.setTextColor(...mutedColor);
@@ -391,7 +398,7 @@ export function LabResultsPage() {
     doc.setFontSize(8);
     doc.setTextColor(...textColor);
     doc.text(lab.technician, margin + 30, footerY + 22, { align: 'center' });
-    
+
     // Pathologist signature
     doc.setLineWidth(0.3);
     doc.rect(pageWidth - margin - 60, footerY, 60, 25, 'S');
@@ -403,24 +410,24 @@ export function LabResultsPage() {
     doc.setFontSize(8);
     doc.setTextColor(...textColor);
     doc.text('Dr. Pathologist Name', pageWidth - margin - 30, footerY + 22, { align: 'center' });
-    
+
     // Disclaimer
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
     doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(7);
     doc.setFont('helvetica', 'italic');
-    const disclaimer = 'Note: This report is for clinical correlation only. Please consult your physician for interpretation. Results may vary based on methodology used.';
+    const disclaimer = settings.pdfSettings?.footerText || 'Note: This report is for clinical correlation only. Please consult your physician for interpretation. Results may vary based on methodology used.';
     const splitDisclaimer = doc.splitTextToSize(disclaimer, contentWidth);
     doc.text(splitDisclaimer, pageWidth / 2, pageHeight - 14, { align: 'center' });
-    
+
     // Page border
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.5);
     doc.rect(5, 5, pageWidth - 10, pageHeight - 10, 'S');
-    
+
     doc.save(`lab-report-${lab.id}.pdf`);
     toast.success('Lab report PDF downloaded');
   };
@@ -496,16 +503,16 @@ export function LabResultsPage() {
       // Step 1: Queued → Sending (after 500ms)
       await new Promise(resolve => setTimeout(resolve, 500));
       updateStatus(smsId, 'sending');
-      
+
       // Step 2: Sending → Delivered (after 1500ms)
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Simulate 90% success rate
       const isSuccess = Math.random() > 0.1;
-      
+
       if (isSuccess) {
         updateStatus(smsId, 'delivered');
-        
+
         // Log the mock message for debugging
         console.log('📱 Mock SMS delivered:', {
           id: smsId,
@@ -549,7 +556,7 @@ export function LabResultsPage() {
         {/* Lab Result Form */}
         <div className="form-section">
           <h2 className="text-lg font-semibold mb-4">Add Lab Result</h2>
-          
+
           <div className="space-y-4">
             <div>
               <Label>Select Patient *</Label>
@@ -699,7 +706,7 @@ export function LabResultsPage() {
             ) : (
               [...filteredLabResults].reverse().map((lab) => {
                 const patient = patients.find(p => p.id === lab.patientId);
-                
+
                 return (
                   <Card key={lab.id} id={`lab-${lab.id}`}>
                     {/* ===== PRINT LAYOUT ===== */}
@@ -727,7 +734,7 @@ export function LabResultsPage() {
                           <p className="text-sm text-muted-foreground">Date: {safeFormatDate(lab.reportDate, 'MMMM dd, yyyy')}</p>
                         </div>
                       </div>
-                      
+
                       {/* Patient Details */}
                       <div className="bg-muted/50 p-4 rounded-lg mb-4 border">
                         <h2 className="font-bold text-sm mb-2 text-primary">PATIENT INFORMATION</h2>
@@ -740,7 +747,7 @@ export function LabResultsPage() {
                           <p><span className="font-medium">Technician:</span> {lab.technician}</p>
                         </div>
                       </div>
-                      
+
                       {/* Test Results Table */}
                       <div className="mb-4">
                         <h2 className="font-bold text-sm mb-2 text-primary">TEST RESULTS</h2>
@@ -761,16 +768,15 @@ export function LabResultsPage() {
                                 <td className="border p-2 text-center font-bold">{test.value}</td>
                                 <td className="border p-2 text-center">{test.unit}</td>
                                 <td className="border p-2 text-center">{test.normalRange}</td>
-                                <td className={`border p-2 text-center font-medium ${
-                                  test.status === 'Normal' ? 'text-green-600' : 
+                                <td className={`border p-2 text-center font-medium ${test.status === 'Normal' ? 'text-green-600' :
                                   test.status === 'Critical' ? 'text-red-600' : 'text-yellow-600'
-                                }`}>{test.status}</td>
+                                  }`}>{test.status}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                      
+
                       {/* Notes */}
                       {lab.notes && (
                         <div className="mb-4 p-3 border rounded">
@@ -778,7 +784,7 @@ export function LabResultsPage() {
                           <p className="text-sm">{lab.notes}</p>
                         </div>
                       )}
-                      
+
                       {/* Signatures */}
                       <div className="flex justify-between items-end mt-8 pt-4 border-t">
                         <div className="text-center">
@@ -792,7 +798,7 @@ export function LabResultsPage() {
                           <p className="text-xs text-muted-foreground">Dr. Pathologist Name</p>
                         </div>
                       </div>
-                      
+
                       {/* Disclaimer */}
                       <div className="mt-6 pt-4 border-t text-center">
                         <p className="text-xs text-muted-foreground italic">
@@ -800,7 +806,7 @@ export function LabResultsPage() {
                         </p>
                       </div>
                     </div>
-                    
+
                     {/* ===== SCREEN LAYOUT ===== */}
                     <CardHeader className="pb-2 print:hidden">
                       <div className="flex items-start justify-between">
@@ -824,8 +830,8 @@ export function LabResultsPage() {
                     <CardContent className="space-y-3 print:hidden">
                       {/* Status workflow buttons */}
                       <div className="flex flex-wrap gap-2 pb-2 border-b">
-                        <Select 
-                          value={lab.status || 'Sample Collected'} 
+                        <Select
+                          value={lab.status || 'Sample Collected'}
                           onValueChange={(v: LabResultStatus) => updateLabResultStatus(lab.id, v)}
                         >
                           <SelectTrigger className="w-[160px] h-8 text-xs">
@@ -837,7 +843,7 @@ export function LabResultsPage() {
                             <SelectItem value="Ready">Ready</SelectItem>
                           </SelectContent>
                         </Select>
-                        
+
                         {lab.status === 'Ready' && (
                           <Dialog>
                             <DialogTrigger asChild>
@@ -872,8 +878,8 @@ export function LabResultsPage() {
                                 </div>
                               </div>
                               <DialogFooter>
-                                <Button 
-                                  variant="default" 
+                                <Button
+                                  variant="default"
                                   onClick={() => handleNotifyPatient(lab)}
                                   disabled={isSendingNotification}
                                 >
@@ -895,9 +901,9 @@ export function LabResultsPage() {
                         )}
 
                         {lab.status === 'Notified' && (
-                          <Button 
-                            size="sm" 
-                            variant="default" 
+                          <Button
+                            size="sm"
+                            variant="default"
                             className="h-8 text-xs"
                             onClick={() => handleMarkCollected(lab.id)}
                           >
@@ -933,7 +939,7 @@ export function LabResultsPage() {
                           <p className="text-xs text-muted-foreground">+{lab.tests.length - 3} more tests</p>
                         )}
                       </div>
-                      
+
                       {/* Action buttons */}
                       <div className="flex gap-2">
                         <Button

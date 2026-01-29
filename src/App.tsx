@@ -15,6 +15,7 @@ import { PrescriptionsPage } from "./pages/Prescriptions";
 import { LabResultsPage } from "./pages/LabResults";
 import { UsersPage } from "./pages/Users";
 import { SettingsPage } from "./pages/Settings";
+import { DailyExpensesPage } from "./pages/DailyExpenses";
 import { LoginPage } from "./pages/Login";
 import { UnauthorizedPage } from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
@@ -109,6 +110,16 @@ const App = () => (
                         element={
                           <ProtectedRoute allowedRoles={['Admin']}>
                             <UsersPage />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Daily Expenses - Admin & Receptionist */}
+                      <Route
+                        path="/daily-expenses"
+                        element={
+                          <ProtectedRoute allowedRoles={['Admin', 'Receptionist']}>
+                            <DailyExpensesPage />
                           </ProtectedRoute>
                         }
                       />

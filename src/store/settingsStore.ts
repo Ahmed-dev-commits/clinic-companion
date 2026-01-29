@@ -12,6 +12,13 @@ export interface ClinicSettings {
   doctorRegNo: string;
   consultationHours: string;
   logo: string | null; // Base64 string for logo
+  pdfSettings: {
+    primaryColor: string;
+    secondaryColor: string;
+    footerText: string;
+    showLogo: boolean;
+    showWatermark: boolean;
+  };
 }
 
 const defaultSettings: ClinicSettings = {
@@ -25,6 +32,13 @@ const defaultSettings: ClinicSettings = {
   doctorRegNo: 'MCI-12345-2020',
   consultationHours: '10 AM - 6 PM',
   logo: null,
+  pdfSettings: {
+    primaryColor: '#1a56db', // Blue
+    secondaryColor: '#64748b', // Slate-500
+    footerText: 'Please consult your doctor before taking any medicine. Self-medication can be harmful.',
+    showLogo: true,
+    showWatermark: false,
+  },
 };
 
 interface SettingsStore {

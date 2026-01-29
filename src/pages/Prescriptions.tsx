@@ -31,7 +31,7 @@ export function PrescriptionsPage() {
   const { prescriptions, loading, addPrescription, refetch } = usePrescriptions();
   const { stock, reduceStock } = useStock();
   const { settings } = useSettingsStore();
-  
+
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [medicines, setMedicines] = useState<PrescriptionMedicine[]>([]);
@@ -39,7 +39,7 @@ export function PrescriptionsPage() {
   const [doctorNotes, setDoctorNotes] = useState('');
   const [precautions, setPrecautions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
-  
+
   // New medicine form
   const [newMedicine, setNewMedicine] = useState({
     name: '',
@@ -160,7 +160,7 @@ export function PrescriptionsPage() {
 
   const handleDownloadPDF = (rx: Prescription) => {
     const doc = new jsPDF();
-    
+
     // Set document properties without URLs
     doc.setProperties({
       title: `Prescription-${rx.id}`,
@@ -168,24 +168,32 @@ export function PrescriptionsPage() {
       author: settings.clinicName,
       creator: settings.clinicName
     });
-    
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const contentWidth = pageWidth - 2 * margin;
-    
+
     // Colors
-    const primaryColor: [number, number, number] = [26, 86, 219]; // Blue
+    // Colors
+    // Use stored primary color or default blue
+    const primaryColorHex = settings.pdfSettings?.primaryColor || '#1a56db';
+    const r = parseInt(primaryColorHex.slice(1, 3), 16);
+    const g = parseInt(primaryColorHex.slice(3, 5), 16);
+    const b = parseInt(primaryColorHex.slice(5, 7), 16);
+    const primaryColor: [number, number, number] = [r, g, b];
+
     const textColor: [number, number, number] = [30, 30, 30];
     const mutedColor: [number, number, number] = [100, 100, 100];
     const lineColor: [number, number, number] = [200, 200, 200];
-    
+
     // Get patient details
     const patient = patients.find(p => p.id === rx.patientId);
-    
+
     // ============ HEADER SECTION ============
     // Logo
-    if (settings.logo) {
+    const showLogo = settings.pdfSettings?.showLogo ?? true;
+    if (settings.logo && showLogo) {
       try {
         doc.addImage(settings.logo, 'PNG', margin, 10, 25, 25);
       } catch {
@@ -196,7 +204,7 @@ export function PrescriptionsPage() {
         doc.setFont('helvetica', 'bold');
         doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
       }
-    } else {
+    } else if (showLogo) {
       doc.setFillColor(...primaryColor);
       doc.roundedRect(margin, 10, 25, 25, 3, 3, 'F');
       doc.setTextColor(255, 255, 255);
@@ -204,20 +212,33 @@ export function PrescriptionsPage() {
       doc.setFont('helvetica', 'bold');
       doc.text('LOGO', margin + 12.5, 25, { align: 'center' });
     }
-    
+
+    // Clinic Info
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(18);
+    // ... (rest of header same, simplified replace for brevity if needed, but I must replace contiguous block)
+    // I can't skip lines easily with replace_file_content.
+    // I will replace from Colors (178) to Header End (206) OR do separate replacements.
+
+    // Let's do logical chunks.
+    // 1. Colors
+    // 2. Logo Logic
+    // 3. Disclaimer Logic (at end)
+
+
     // Clinic Info
     doc.setTextColor(...primaryColor);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(settings.clinicName, margin + 30, 18);
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(settings.address, margin + 30, 24);
     doc.text(settings.city, margin + 30, 29);
     doc.text(`Phone: ${settings.phone} | Email: ${settings.email}`, margin + 30, 34);
-    
+
     // Doctor Info (right side)
     doc.setTextColor(...textColor);
     doc.setFontSize(10);
@@ -229,12 +250,12 @@ export function PrescriptionsPage() {
     doc.text(settings.doctorQualification, pageWidth - margin, 23, { align: 'right' });
     doc.text(`Reg. No: ${settings.doctorRegNo}`, pageWidth - margin, 28, { align: 'right' });
     doc.text(`Consultation Hours: ${settings.consultationHours}`, pageWidth - margin, 33, { align: 'right' });
-    
+
     // Header line
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.8);
     doc.line(margin, 40, pageWidth - margin, 40);
-    
+
     // E-Prescription title
     doc.setFillColor(...primaryColor);
     doc.roundedRect(pageWidth / 2 - 25, 43, 50, 8, 2, 2, 'F');
@@ -242,24 +263,24 @@ export function PrescriptionsPage() {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('E-PRESCRIPTION', pageWidth / 2, 48.5, { align: 'center' });
-    
+
     // ============ PATIENT DETAILS SECTION ============
     let yPos = 58;
-    
+
     // Patient info box
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, yPos, contentWidth, 28, 2, 2, 'S');
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    
+
     // Left column
     doc.text('Patient Name:', margin + 4, yPos + 7);
     doc.text('Age / Gender:', margin + 4, yPos + 14);
     doc.text('Patient ID:', margin + 4, yPos + 21);
-    
+
     // Left column values
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'bold');
@@ -268,7 +289,7 @@ export function PrescriptionsPage() {
     doc.setFont('helvetica', 'normal');
     doc.text(`${rx.patientAge} years / ${patient?.gender || 'N/A'}`, margin + 30, yPos + 14);
     doc.text(rx.patientId, margin + 30, yPos + 21);
-    
+
     // Right column
     const rightCol = pageWidth / 2 + 10;
     doc.setTextColor(...mutedColor);
@@ -276,16 +297,16 @@ export function PrescriptionsPage() {
     doc.text('Date:', rightCol, yPos + 7);
     doc.text('Prescription ID:', rightCol, yPos + 14);
     doc.text('Visit ID:', rightCol, yPos + 21);
-    
+
     // Right column values
     doc.setTextColor(...textColor);
     doc.setFontSize(9);
     doc.text(format(new Date(rx.createdAt), 'dd MMM yyyy, hh:mm a'), rightCol + 30, yPos + 7);
     doc.text(rx.id, rightCol + 30, yPos + 14);
     doc.text(`V-${rx.id.slice(-6).toUpperCase()}`, rightCol + 30, yPos + 21);
-    
+
     yPos += 35;
-    
+
     // ============ DIAGNOSIS SECTION ============
     doc.setFillColor(245, 247, 250);
     doc.roundedRect(margin, yPos, contentWidth, 14, 2, 2, 'F');
@@ -296,26 +317,26 @@ export function PrescriptionsPage() {
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'normal');
     doc.text(rx.diagnosis, margin + 28, yPos + 6);
-    
+
     // Allergies (if any from patient record)
     doc.setTextColor(180, 50, 50);
     doc.setFontSize(8);
     doc.text('Allergies: None reported', margin + 4, yPos + 11);
-    
+
     yPos += 20;
-    
+
     // ============ PRESCRIPTION TABLE ============
     // Table header
     doc.setFillColor(...primaryColor);
     doc.rect(margin, yPos, contentWidth, 8, 'F');
-    
+
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    
+
     const colWidths = [8, 45, 25, 30, 22, 50];
     let xPos = margin + 2;
-    
+
     doc.text('#', xPos, yPos + 5.5);
     xPos += colWidths[0];
     doc.text('Medicine Name', xPos, yPos + 5.5);
@@ -327,20 +348,20 @@ export function PrescriptionsPage() {
     doc.text('Duration', xPos, yPos + 5.5);
     xPos += colWidths[4];
     doc.text('Instructions', xPos, yPos + 5.5);
-    
+
     yPos += 8;
-    
+
     // Table rows
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'normal');
-    
+
     rx.medicines.forEach((med, i) => {
       // Alternating row colors
       if (i % 2 === 0) {
         doc.setFillColor(250, 250, 252);
         doc.rect(margin, yPos, contentWidth, 8, 'F');
       }
-      
+
       xPos = margin + 2;
       doc.text(`${i + 1}`, xPos, yPos + 5.5);
       xPos += colWidths[0];
@@ -355,17 +376,17 @@ export function PrescriptionsPage() {
       doc.text(med.duration, xPos, yPos + 5.5);
       xPos += colWidths[4];
       doc.text('After food', xPos, yPos + 5.5);
-      
+
       yPos += 8;
     });
-    
+
     // Table border
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
     doc.rect(margin, yPos - (rx.medicines.length * 8) - 8, contentWidth, (rx.medicines.length + 1) * 8, 'S');
-    
+
     yPos += 8;
-    
+
     // ============ LAB TESTS SECTION ============
     if (rx.labTests.length > 0) {
       doc.setFillColor(255, 250, 245);
@@ -382,29 +403,29 @@ export function PrescriptionsPage() {
       doc.text('(Please complete tests before next visit)', margin + 4, yPos + 10);
       yPos += 16;
     }
-    
+
     // ============ NOTES & ADVICE SECTION ============
     if (rx.doctorNotes || rx.precautions) {
       doc.setDrawColor(...lineColor);
       doc.setLineWidth(0.3);
-      
+
       const notesHeight = 24;
       doc.roundedRect(margin, yPos, contentWidth, notesHeight, 2, 2, 'S');
-      
+
       doc.setTextColor(...primaryColor);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.text('NOTES & ADVICE:', margin + 4, yPos + 6);
-      
+
       doc.setTextColor(...textColor);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      
+
       if (rx.doctorNotes) {
         const splitNotes = doc.splitTextToSize(rx.doctorNotes, contentWidth - 8);
         doc.text(splitNotes, margin + 4, yPos + 12);
       }
-      
+
       if (rx.precautions) {
         doc.setTextColor(180, 50, 50);
         doc.setFont('helvetica', 'bold');
@@ -412,10 +433,10 @@ export function PrescriptionsPage() {
         doc.setFont('helvetica', 'normal');
         doc.text(rx.precautions, margin + 25, yPos + 18);
       }
-      
+
       yPos += notesHeight + 6;
     }
-    
+
     // ============ FOLLOW-UP SECTION ============
     doc.setFillColor(240, 255, 240);
     doc.roundedRect(margin, yPos, contentWidth / 2 - 5, 12, 2, 2, 'F');
@@ -427,14 +448,14 @@ export function PrescriptionsPage() {
     doc.setFont('helvetica', 'normal');
     const followUpDatePdf = rx.followUpDate ? new Date(rx.followUpDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     doc.text(isNaN(followUpDatePdf.getTime()) ? 'To be scheduled' : format(followUpDatePdf, 'dd MMM yyyy'), margin + 38, yPos + 7);
-    
+
     // ============ FOOTER SECTION ============
     const footerY = pageHeight - 50;
-    
+
     // Signature and stamp boxes
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
-    
+
     // Doctor signature
     doc.rect(margin, footerY, 60, 25, 'S');
     doc.setTextColor(...mutedColor);
@@ -445,7 +466,7 @@ export function PrescriptionsPage() {
     doc.setFontSize(8);
     doc.setTextColor(...textColor);
     doc.text(settings.doctorName, margin + 30, footerY + 22, { align: 'center' });
-    
+
     // Clinic stamp
     doc.setLineWidth(0.3);
     doc.rect(pageWidth - margin - 60, footerY, 60, 25, 'S');
@@ -462,24 +483,24 @@ export function PrescriptionsPage() {
     doc.text(clinicShortName, pageWidth - margin - 30, footerY + 14, { align: 'center' });
     doc.setFontSize(6);
     doc.text('HOSPITAL', pageWidth - margin - 30, footerY + 19, { align: 'center' });
-    
+
     // Disclaimer
     doc.setDrawColor(...lineColor);
     doc.setLineWidth(0.3);
     doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
-    
+
     doc.setTextColor(...mutedColor);
     doc.setFontSize(7);
     doc.setFont('helvetica', 'italic');
-    const disclaimer = 'Please consult your doctor before taking any medicine. Self-medication can be harmful.';
+    const disclaimer = settings.pdfSettings?.footerText || 'Please consult your doctor before taking any medicine. Self-medication can be harmful.';
     const splitDisclaimer = doc.splitTextToSize(disclaimer, contentWidth);
     doc.text(splitDisclaimer, pageWidth / 2, pageHeight - 14, { align: 'center' });
-    
+
     // Page border
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.5);
     doc.rect(5, 5, pageWidth - 10, pageHeight - 10, 'S');
-    
+
     doc.save(`prescription-${rx.id}.pdf`);
     toast.success('Professional PDF downloaded');
   };
@@ -507,7 +528,7 @@ export function PrescriptionsPage() {
         {/* Prescription Form */}
         <div className="form-section">
           <h2 className="text-lg font-semibold mb-4">Create Prescription</h2>
-          
+
           <div className="space-y-4">
             <div>
               <Label>Select Patient *</Label>
@@ -738,188 +759,188 @@ export function PrescriptionsPage() {
             ) : (
               [...filteredPrescriptions].reverse().map((rx) => {
                 const patient = patients.find(p => p.id === rx.patientId);
-                
+
                 return (
-                <Card key={rx.id} id={`prescription-${rx.id}`}>
-                  {/* ===== PRINT LAYOUT - Professional E-Prescription Template ===== */}
-                  <div className="hidden print:block p-8">
-                    {/* Header with Logo and Clinic Info */}
-                    <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-4">
-                      <div className="flex items-start gap-4">
-                        {/* Logo */}
-                        {settings.logo ? (
-                          <img src={settings.logo} alt="Clinic Logo" className="w-16 h-16 object-contain rounded-lg" />
-                        ) : (
-                          <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                            LOGO
+                  <Card key={rx.id} id={`prescription-${rx.id}`}>
+                    {/* ===== PRINT LAYOUT - Professional E-Prescription Template ===== */}
+                    <div className="hidden print:block p-8">
+                      {/* Header with Logo and Clinic Info */}
+                      <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-4">
+                        <div className="flex items-start gap-4">
+                          {/* Logo */}
+                          {settings.logo ? (
+                            <img src={settings.logo} alt="Clinic Logo" className="w-16 h-16 object-contain rounded-lg" />
+                          ) : (
+                            <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                              LOGO
+                            </div>
+                          )}
+                          <div>
+                            <h1 className="text-2xl font-bold text-primary">{settings.clinicName}</h1>
+                            <p className="text-sm text-muted-foreground">{settings.address}</p>
+                            <p className="text-sm text-muted-foreground">{settings.city}</p>
+                            <p className="text-sm text-muted-foreground">Phone: {settings.phone} | Email: {settings.email}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{settings.doctorName}</p>
+                          <p className="text-sm text-muted-foreground">{settings.doctorQualification}</p>
+                          <p className="text-sm text-muted-foreground">Reg. No: {settings.doctorRegNo}</p>
+                          <p className="text-sm text-muted-foreground">Consultation: {settings.consultationHours}</p>
+                        </div>
+                      </div>
+
+                      {/* Patient Details Section */}
+                      <div className="bg-muted/50 p-4 rounded-lg mb-4 border">
+                        <h2 className="font-bold text-sm mb-2 text-primary">PATIENT INFORMATION</h2>
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                          <p><span className="font-medium">Patient Name:</span> {rx.patientName}</p>
+                          <p><span className="font-medium">Patient ID:</span> {rx.patientId}</p>
+                          <p><span className="font-medium">Age / Gender:</span> {rx.patientAge} years / {patient?.gender || 'N/A'}</p>
+                          <p><span className="font-medium">Date:</span> {format(new Date(rx.createdAt), 'MMMM dd, yyyy')}</p>
+                          <p><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
+                          <p><span className="font-medium">Visit ID:</span> RX-{rx.id}</p>
+                        </div>
+                      </div>
+
+                      {/* Diagnosis Section */}
+                      <div className="mb-4 p-3 border rounded">
+                        <h2 className="font-bold text-sm mb-1 text-primary">DIAGNOSIS</h2>
+                        <p className="text-sm">{rx.diagnosis}</p>
+                      </div>
+
+                      {/* Medications Table */}
+                      <div className="mb-4">
+                        <h2 className="font-bold text-sm mb-2 text-primary">PRESCRIBED MEDICATIONS</h2>
+                        <table className="w-full border-collapse border text-sm">
+                          <thead>
+                            <tr className="bg-primary/10">
+                              <th className="border p-2 text-left font-semibold">#</th>
+                              <th className="border p-2 text-left font-semibold">Medicine Name</th>
+                              <th className="border p-2 text-left font-semibold">Dosage</th>
+                              <th className="border p-2 text-left font-semibold">Frequency</th>
+                              <th className="border p-2 text-left font-semibold">Duration</th>
+                              <th className="border p-2 text-left font-semibold">Instructions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rx.medicines.map((med, i) => (
+                              <tr key={i}>
+                                <td className="border p-2">{i + 1}</td>
+                                <td className="border p-2 font-medium">{med.name}</td>
+                                <td className="border p-2">{med.dosage}</td>
+                                <td className="border p-2">{med.frequency}</td>
+                                <td className="border p-2">{med.duration}</td>
+                                <td className="border p-2">As directed</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Lab Tests */}
+                      {rx.labTests.length > 0 && (
+                        <div className="mb-4 p-3 border rounded">
+                          <h2 className="font-bold text-sm mb-1 text-primary">LAB TESTS ADVISED</h2>
+                          <p className="text-sm">{rx.labTests.join(', ')}</p>
+                        </div>
+                      )}
+
+                      {/* Notes & Advice */}
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        {rx.doctorNotes && (
+                          <div className="p-3 border rounded">
+                            <h2 className="font-bold text-sm mb-1 text-primary">NOTES / ADVICE</h2>
+                            <p className="text-sm">{rx.doctorNotes}</p>
                           </div>
                         )}
-                        <div>
-                          <h1 className="text-2xl font-bold text-primary">{settings.clinicName}</h1>
-                          <p className="text-sm text-muted-foreground">{settings.address}</p>
-                          <p className="text-sm text-muted-foreground">{settings.city}</p>
-                          <p className="text-sm text-muted-foreground">Phone: {settings.phone} | Email: {settings.email}</p>
+                        {rx.precautions && (
+                          <div className="p-3 border rounded">
+                            <h2 className="font-bold text-sm mb-1 text-primary">PRECAUTIONS / ALLERGIES</h2>
+                            <p className="text-sm">{rx.precautions}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Follow-up */}
+                      <div className="mb-6 p-3 bg-muted/30 border rounded">
+                        <p className="text-sm"><span className="font-medium">Follow-up Date:</span> {rx.followUpDate && !isNaN(new Date(rx.followUpDate).getTime()) ? format(new Date(rx.followUpDate), 'MMMM dd, yyyy') : 'To be scheduled'}</p>
+                      </div>
+
+                      {/* Footer - Signature & Stamp */}
+                      <div className="flex justify-between items-end mt-8 pt-4 border-t">
+                        <div className="text-center">
+                          <div className="w-32 h-20 border-2 border-dashed border-muted-foreground rounded flex items-center justify-center text-xs text-muted-foreground mb-1">
+                            Clinic Stamp
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="w-40 border-b border-black mb-1 h-12"></div>
+                          <p className="text-sm font-medium">Doctor's Signature</p>
+                          <p className="text-xs text-muted-foreground">{settings.doctorName}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold">{settings.doctorName}</p>
-                        <p className="text-sm text-muted-foreground">{settings.doctorQualification}</p>
-                        <p className="text-sm text-muted-foreground">Reg. No: {settings.doctorRegNo}</p>
-                        <p className="text-sm text-muted-foreground">Consultation: {settings.consultationHours}</p>
-                      </div>
-                    </div>
-                    
-                    {/* Patient Details Section */}
-                    <div className="bg-muted/50 p-4 rounded-lg mb-4 border">
-                      <h2 className="font-bold text-sm mb-2 text-primary">PATIENT INFORMATION</h2>
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-                        <p><span className="font-medium">Patient Name:</span> {rx.patientName}</p>
-                        <p><span className="font-medium">Patient ID:</span> {rx.patientId}</p>
-                        <p><span className="font-medium">Age / Gender:</span> {rx.patientAge} years / {patient?.gender || 'N/A'}</p>
-                        <p><span className="font-medium">Date:</span> {format(new Date(rx.createdAt), 'MMMM dd, yyyy')}</p>
-                        <p><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
-                        <p><span className="font-medium">Visit ID:</span> RX-{rx.id}</p>
-                      </div>
-                    </div>
-                    
-                    {/* Diagnosis Section */}
-                    <div className="mb-4 p-3 border rounded">
-                      <h2 className="font-bold text-sm mb-1 text-primary">DIAGNOSIS</h2>
-                      <p className="text-sm">{rx.diagnosis}</p>
-                    </div>
-                    
-                    {/* Medications Table */}
-                    <div className="mb-4">
-                      <h2 className="font-bold text-sm mb-2 text-primary">PRESCRIBED MEDICATIONS</h2>
-                      <table className="w-full border-collapse border text-sm">
-                        <thead>
-                          <tr className="bg-primary/10">
-                            <th className="border p-2 text-left font-semibold">#</th>
-                            <th className="border p-2 text-left font-semibold">Medicine Name</th>
-                            <th className="border p-2 text-left font-semibold">Dosage</th>
-                            <th className="border p-2 text-left font-semibold">Frequency</th>
-                            <th className="border p-2 text-left font-semibold">Duration</th>
-                            <th className="border p-2 text-left font-semibold">Instructions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rx.medicines.map((med, i) => (
-                            <tr key={i}>
-                              <td className="border p-2">{i + 1}</td>
-                              <td className="border p-2 font-medium">{med.name}</td>
-                              <td className="border p-2">{med.dosage}</td>
-                              <td className="border p-2">{med.frequency}</td>
-                              <td className="border p-2">{med.duration}</td>
-                              <td className="border p-2">As directed</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    {/* Lab Tests */}
-                    {rx.labTests.length > 0 && (
-                      <div className="mb-4 p-3 border rounded">
-                        <h2 className="font-bold text-sm mb-1 text-primary">LAB TESTS ADVISED</h2>
-                        <p className="text-sm">{rx.labTests.join(', ')}</p>
-                      </div>
-                    )}
-                    
-                    {/* Notes & Advice */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      {rx.doctorNotes && (
-                        <div className="p-3 border rounded">
-                          <h2 className="font-bold text-sm mb-1 text-primary">NOTES / ADVICE</h2>
-                          <p className="text-sm">{rx.doctorNotes}</p>
-                        </div>
-                      )}
-                      {rx.precautions && (
-                        <div className="p-3 border rounded">
-                          <h2 className="font-bold text-sm mb-1 text-primary">PRECAUTIONS / ALLERGIES</h2>
-                          <p className="text-sm">{rx.precautions}</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Follow-up */}
-                    <div className="mb-6 p-3 bg-muted/30 border rounded">
-                      <p className="text-sm"><span className="font-medium">Follow-up Date:</span> {rx.followUpDate && !isNaN(new Date(rx.followUpDate).getTime()) ? format(new Date(rx.followUpDate), 'MMMM dd, yyyy') : 'To be scheduled'}</p>
-                    </div>
-                    
-                    {/* Footer - Signature & Stamp */}
-                    <div className="flex justify-between items-end mt-8 pt-4 border-t">
-                      <div className="text-center">
-                        <div className="w-32 h-20 border-2 border-dashed border-muted-foreground rounded flex items-center justify-center text-xs text-muted-foreground mb-1">
-                          Clinic Stamp
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="w-40 border-b border-black mb-1 h-12"></div>
-                        <p className="text-sm font-medium">Doctor's Signature</p>
-                        <p className="text-xs text-muted-foreground">{settings.doctorName}</p>
-                      </div>
-                    </div>
-                    
-                    {/* Disclaimer */}
-                    <div className="mt-6 pt-4 border-t text-center">
-                      <p className="text-xs text-muted-foreground italic">
-                        Please consult your doctor before taking any medicine. Self-medication can be harmful.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        This is a computer-generated e-prescription from {settings.clinicName}.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* ===== SCREEN LAYOUT ===== */}
-                  <CardHeader className="pb-2 print:hidden">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-base">{rx.patientName}</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {rx.diagnosis} • {format(new Date(rx.createdAt), 'MMM dd, yyyy')}
+
+                      {/* Disclaimer */}
+                      <div className="mt-6 pt-4 border-t text-center">
+                        <p className="text-xs text-muted-foreground italic">
+                          Please consult your doctor before taking any medicine. Self-medication can be harmful.
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This is a computer-generated e-prescription from {settings.clinicName}.
                         </p>
                       </div>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {rx.id}
-                      </Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 print:hidden">
-                    {/* Screen view - generated text */}
-                    <div className="prescription-text text-xs">
-                      {rx.generatedText}
-                    </div>
-                    
-                    {/* Action buttons */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCopy(rx.generatedText)}
-                      >
-                        <Copy className="mr-1 h-3 w-3" />
-                        Copy
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePrint(rx.id)}
-                      >
-                        <Printer className="mr-1 h-3 w-3" />
-                        Print
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownloadPDF(rx)}
-                      >
-                        <Download className="mr-1 h-3 w-3" />
-                        PDF
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+
+                    {/* ===== SCREEN LAYOUT ===== */}
+                    <CardHeader className="pb-2 print:hidden">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-base">{rx.patientName}</CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            {rx.diagnosis} • {format(new Date(rx.createdAt), 'MMM dd, yyyy')}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {rx.id}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3 print:hidden">
+                      {/* Screen view - generated text */}
+                      <div className="prescription-text text-xs">
+                        {rx.generatedText}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopy(rx.generatedText)}
+                        >
+                          <Copy className="mr-1 h-3 w-3" />
+                          Copy
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePrint(rx.id)}
+                        >
+                          <Printer className="mr-1 h-3 w-3" />
+                          Print
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadPDF(rx)}
+                        >
+                          <Download className="mr-1 h-3 w-3" />
+                          PDF
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 );
               })
             )}

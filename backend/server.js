@@ -200,6 +200,20 @@ async function initializeDatabase() {
       )
     `);
 
+    // Daily Expenses table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS DailyExpenses (
+        ID VARCHAR(50) PRIMARY KEY,
+        Date VARCHAR(50),
+        Description TEXT,
+        Category VARCHAR(100),
+        Amount DECIMAL(10, 2) DEFAULT 0,
+        PaymentMethod VARCHAR(50),
+        CreatedBy VARCHAR(100),
+        CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Insert default users if none exist
     const [users] = await pool.execute('SELECT COUNT(*) as count FROM Users');
     if (users[0].count === 0) {
@@ -533,6 +547,57 @@ app.put('/api/patient-services/:id', async (req, res) => {
   }
 });
 
+// ============ DAILY EXPENSES API ============
+
+app.get('/api/daily-expenses', async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM DailyExpenses ORDER BY CreatedAt DESC');
+    res.json(rows.map(convertRowDates));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/daily-expenses', async (req, res) => {
+  try {
+    const { id, date, description, category, amount, paymentMethod, createdBy } = req.body;
+    const createdAt = new Date().toISOString();
+
+    await pool.execute(
+      'INSERT INTO DailyExpenses (ID, Date, Description, Category, Amount, PaymentMethod, CreatedBy, CreatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, date, description, category, amount, paymentMethod, createdBy, createdAt]
+    );
+
+    res.json({ success: true, id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/daily-expenses/:id', async (req, res) => {
+  try {
+    const { date, description, category, amount, paymentMethod } = req.body;
+
+    await pool.execute(
+      'UPDATE DailyExpenses SET Date = ?, Description = ?, Category = ?, Amount = ?, PaymentMethod = ? WHERE ID = ?',
+      [date, description, category, amount, paymentMethod, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/daily-expenses/:id', async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM DailyExpenses WHERE ID = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============ USERS API ============
 
 // Get all users (excluding passwords)
@@ -661,6 +726,48 @@ app.post('/api/users/login', async (req, res) => {
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
     }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ DAILY EXPENSES API ============
+
+// Get all expenses
+app.get('/api/daily-expenses', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT * FROM DailyExpenses ORDER BY Date DESC, CreatedAt DESC'
+    );
+    res.json(rows.map(convertRowDates));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new expense
+app.post('/api/daily-expenses', async (req, res) => {
+  try {
+    const { id, date, description, category, amount, paymentMethod, createdBy } = req.body;
+    const createdAt = new Date().toISOString();
+
+    await pool.execute(
+      'INSERT INTO DailyExpenses (ID, Date, Description, Category, Amount, PaymentMethod, CreatedBy, CreatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, date, description, category, amount, paymentMethod, createdBy || 'System', createdAt]
+    );
+
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error creating expense:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete expense
+app.delete('/api/daily-expenses/:id', async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM DailyExpenses WHERE ID = ?', [req.params.id]);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -91,3 +91,14 @@ export interface LabResult {
   collectedAt?: string;
   createdAt: string;
 }
+
+export interface DailyExpense {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  amount: number;
+  paymentMethod: 'Cash' | 'Card' | 'Online' | 'Other';
+  createdBy: string;
+  createdAt: string;
+}

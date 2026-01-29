@@ -13,6 +13,7 @@ import {
   LogOut,
   User,
   ShieldCheck,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -32,6 +33,7 @@ const navItems: { path: string; label: string; icon: React.ComponentType<any>; r
   { path: '/prescriptions', label: 'Prescriptions', icon: FileText, roles: ['Doctor', 'Admin'], permission: 'view_prescriptions' },
   { path: '/lab-results', label: 'Lab Results', icon: FlaskConical, roles: ['LabTechnician', 'Admin'], permission: 'view_lab_results' },
   { path: '/users', label: 'User Management', icon: ShieldCheck, roles: ['Admin'], permission: 'manage_users' },
+  { path: '/daily-expenses', label: 'Daily Expenses', icon: Receipt, roles: ['Admin', 'Receptionist'] },
   { path: '/settings', label: 'Settings', icon: Settings, roles: ['Receptionist', 'Doctor', 'LabTechnician', 'Admin'] },
 ];
 
